@@ -23,7 +23,7 @@
 #                      take-over is done with frames and xdotool instead.
 #   curl / ssh / git - an agent's browser box is not a shell box. Less in the
 #                      image is less for an escaped renderer to pick up.
-FROM debian:12@sha256:813017f3d62be4b5891a7acca6a01bdcd4b8513daa81b1ab99d3a50385b26931
+FROM debian:13@sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c
 
 # `--no-install-recommends` keeps this to what is listed: with recommends,
 # `chromium` alone pulls in a desktop's worth of fonts and an update daemon.

@@ -1,0 +1,378 @@
+#!/usr/bin/env python3
+"""deckdoctor -- is the box about to die? Says so BEFORE it does. (H1, contract K8)
+
+Runs on the always-on box every ten minutes (deploy/deckdoctor.timer). Prints ONE
+JSON line and exits 0 when green, 1 when red:
+
+  {"ok": bool, "checks": {"auth": .., "disk_pct": .., "daemon": .., "stuck_messages": ..,
+   "desks_asleep": ..}, "alert": {"cos": .., "whatsapp": ..}}
+
+Red is spoken ONCE per check per six hours: one line into the chief's thread as
+sender "deck", and one WhatsApp if a bridge is reachable from this machine. A check
+that recovers forgets, so its next failure speaks again.
+
+It only ever reads, except for its own state file and that one alert. It never
+stops, restarts or deletes anything -- what is filling a disk is usually somebody's
+data, and the alarm's job is to say so, not to decide.
+
+Configuration is environment only (no secrets in argv or in the unit):
+  DISK_RED_PCT          red at or above this many percent used (default 85)
+  DECKDOCTOR_DISK_PATH  filesystem to measure (default /)
+  DECK_URL              the deck (default: read from deck.toml -- [deck] bind/port)
+  DECK_CONFIG           deck.toml to read (default /etc/agent-deck/deck.toml)
+  AGENT_DECK_TOKEN      bearer for /v1/agents; else the bus's deck-token.txt. Never printed.
+  DECKDOCTOR_ALERT      send (default) | off | file:<path>  -- the last two are DRY RUNS
+  DECKDOCTOR_STATE      dedupe/probe state (default <bus>/deckdoctor-state.json)
+  DECKDOCTOR_AUTH_PROBE 1 (default) spends one tiny `claude -p` per 6 h; 0 disables it
+  DECK_ROOT             the deck checkout, for server.office / server.notify
+"""
+from __future__ import annotations
+
+import json
+import math
+import os
+import shutil
+import subprocess
+import sys
+import time
+import urllib.request
+from pathlib import Path
+
+ROOT = Path(os.environ.get("DECK_ROOT") or Path(__file__).resolve().parent.parent)
+HOUR = 3600.0
+
+# Who counts as "the owner's side" when asking whether a message got through.
+# Mirrors server.office.OWNER_SENDERS plus the engineer (contract K2).
+# The owner's own id comes from config (server/owner.py), read when asked.
+OWNER_SIDE_FIXED = frozenset({"owner", "routine", "deck", "engineer"})
+
+
+def owner_side() -> frozenset:
+    try:
+        _import_deck()
+        from server import owner
+        return OWNER_SIDE_FIXED | {owner.handle()}
+    except Exception:
+        return OWNER_SIDE_FIXED
+
+# What to do, one clause each. Deliberately free of anything a check's own name
+# would give away: an alert about the daemon must not read like one about disk.
+RUNBOOK = {
+    "disk_pct": "Nothing under /opt/studio is ours to delete or stop -- tell whoever runs "
+                "this box who is writing (du -xh / --max-depth=2) and let them decide.",
+    "auth": "The Claude login is dead, so every desk dies on start: run "
+            "`sudo deckctl login` and follow the link.",
+    "daemon": "Check `systemctl status agentdeck` and `journalctl -u agentdeck -n 50`.",
+    "stuck_messages": "Owner messages are not being read: wake or restart the desks "
+                      "named in the deck's delivery notes.",
+}
+
+
+# -- seams: the real ones. Tests replace every one of these ------------------
+
+
+def _disk(path: str) -> int:
+    """Percent used, the way `df` prints it (used / (used + available), rounded up)."""
+    usage = shutil.disk_usage(path)
+    return math.ceil(100 * usage.used / (usage.used + usage.free))
+
+
+def _run(argv: list[str], timeout: float) -> tuple[int, str]:
+    try:
+        done = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+    except FileNotFoundError:
+        return 127, f"{argv[0]}: not found"
+    except subprocess.TimeoutExpired:
+        return 124, f"timed out after {timeout:.0f}s"
+    return done.returncode, ((done.stdout or "") + (done.stderr or "")).strip()
+
+
+def _fetch(url: str, token: str):
+    req = urllib.request.Request(url)
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
+    with urllib.request.urlopen(req, timeout=8) as resp:
+        body = resp.read().decode("utf-8", "replace")
+    try:
+        return json.loads(body)
+    except ValueError:
+        return {}
+
+
+def _import_deck():
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+
+
+def _post(to: str, text: str) -> None:
+    _import_deck()
+    from server import office
+    result = office.send(to, text, sender="deck", extra={"doctor": True})
+    if not result.get("ok"):
+        raise OSError(result.get("detail") or "office.send refused")
+
+
+def _whatsapp(text: str) -> str:
+    _import_deck()
+    from server import notify
+    sent = notify.send(text)
+    return "sent" if sent.ok else f"skipped: {sent.detail}"
+
+
+def _token(env: dict) -> str:
+    if env.get("AGENT_DECK_TOKEN"):
+        return env["AGENT_DECK_TOKEN"].strip()
+    home = Path(env.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+    try:
+        return (home / "agent-bus" / "deck-token.txt").read_text().strip()
+    except OSError:
+        return ""
+
+
+def _deck_url_from_config(env: dict) -> str:
+    """Where the deck listens, per deck.toml. Never a guess about someone's network:
+    no file (or an unreadable one) means the deck's own default, loopback:7789."""
+    bind, port = "127.0.0.1", 7789
+    try:
+        _import_deck()
+        from server import deckconfig
+        cfg = deckconfig.load(env.get("DECK_CONFIG") or None, env=env)
+        bind, port = cfg.deck.bind, cfg.deck.port
+    except Exception:
+        pass  # the alarm must still ask the default address, not die on a bad file
+    if bind in ("0.0.0.0", "::", ""):
+        bind = "127.0.0.1"
+    host = f"[{bind}]" if ":" in bind else bind
+    return f"http://{host}:{port}"
+
+
+def config(env: dict | None = None) -> dict:
+    env = dict(os.environ if env is None else env)
+    home = Path(env.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+    bus = home / "agent-bus"
+    return {
+        "disk_red_pct": float(env.get("DISK_RED_PCT") or 85),
+        "disk_path": env.get("DECKDOCTOR_DISK_PATH") or "/",
+        "deck_url": (env.get("DECK_URL") or _deck_url_from_config(env)).rstrip("/"),
+        "token": _token(env),
+        "messages": bus / "messages.jsonl",
+        "roster": bus / "roster.json",
+        "state": Path(env.get("DECKDOCTOR_STATE") or bus / "deckdoctor-state.json"),
+        "alert": env.get("DECKDOCTOR_ALERT") or "send",
+        "auth_probe": (env.get("DECKDOCTOR_AUTH_PROBE") or "1") != "0",
+        "claude": env.get("CLAUDE_BIN") or "claude",
+        "stuck_seconds": 300.0,
+        "stuck_lookback": 24 * HOUR,
+        "dedupe_seconds": 6 * HOUR,
+        "disk": _disk, "run": _run, "fetch": _fetch, "post": _post,
+        "whatsapp": _whatsapp, "now": time.time,
+    }
+
+
+# -- state -------------------------------------------------------------------
+
+
+def _load_state(path: Path) -> dict:
+    try:
+        state = json.loads(path.read_text())
+        return state if isinstance(state, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_state(path: Path, state: dict) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(json.dumps(state))
+        os.replace(tmp, path)
+    except OSError:
+        pass  # a full disk is exactly when this runs; the alarm must still speak
+
+
+def _short(text: str, limit: int = 120) -> str:
+    line = " ".join(str(text).split())
+    return line if len(line) <= limit else line[: limit - 1] + "…"
+
+
+# -- the checks: each returns {"ok": bool, ...} and never raises -------------
+
+
+def check_disk(cfg: dict) -> dict:
+    try:
+        pct = cfg["disk"](cfg["disk_path"])
+    except Exception as err:
+        return {"ok": False, "value": None, "detail": _short(f"cannot measure: {err}")}
+    return {"ok": pct < cfg["disk_red_pct"], "value": pct, "limit": cfg["disk_red_pct"]}
+
+
+def check_auth(cfg: dict, state: dict) -> dict:
+    claude = cfg["claude"]
+    code, out = cfg["run"]([claude, "auth", "status"], 30)
+    try:
+        logged_in = bool(json.loads(out).get("loggedIn"))
+    except (ValueError, AttributeError):
+        return {"ok": False, "detail": _short(f"auth status unreadable (exit {code}): {out}")}
+    if not logged_in:
+        return {"ok": False, "detail": "claude auth status: not logged in"}
+    if not cfg["auth_probe"]:
+        return {"ok": True, "detail": "logged in (probe off)"}
+    now = cfg["now"]()
+    probe = state.get("probe") or {}
+    if probe.get("ok") and now - float(probe.get("ts") or 0) < cfg["dedupe_seconds"]:
+        return {"ok": True, "detail": "logged in; live probe ok"}
+    # `auth status` proves a credential is on disk, not that it still works. An
+    # expired OAuth token reports loggedIn:true while every session dies.
+    code, out = cfg["run"]([claude, "-p", "reply with the single word ok"], 90)
+    state["probe"] = {"ts": now, "ok": code == 0}
+    if code != 0:
+        return {"ok": False, "detail": _short(f"live probe failed (exit {code}): {out}")}
+    return {"ok": True, "detail": "logged in; live probe ok"}
+
+
+def check_daemon(cfg: dict) -> dict:
+    try:
+        cfg["fetch"](cfg["deck_url"] + "/api/state", cfg["token"])
+    except Exception as err:
+        return {"ok": False, "detail": _short(f"deck unreachable: {type(err).__name__}")}
+    return {"ok": True}
+
+
+def _desk_names(roster: Path) -> tuple[set[str], str | None]:
+    try:
+        rows = json.loads(roster.read_text()).get("agents") or []
+    except (OSError, ValueError, AttributeError):
+        return set(), None
+    names = {str(r["name"]) for r in rows if isinstance(r, dict) and "name" in r}
+    roots = [str(r["name"]) for r in rows
+             if isinstance(r, dict) and r.get("name") and r.get("reports_to") is None]
+    reports = {n: sum(1 for r in rows if isinstance(r, dict) and r.get("reports_to") == n)
+               for n in roots}
+    # Several desks can have no boss (a stale hire, an engineer's probe). The
+    # chief is the root the most desks report to; a tie goes to the first listed.
+    chief = max(roots, key=lambda n: reports[n], default=None)
+    return names, chief
+
+
+def check_stuck(cfg: dict) -> dict:
+    now, names = cfg["now"](), _desk_names(cfg["roster"])[0]
+    acked, queued = set(), {}
+    try:
+        lines = Path(cfg["messages"]).read_text().splitlines()
+    except OSError:
+        return {"ok": True, "count": 0}
+    for line in lines:
+        try:
+            rec = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(rec, dict):
+            continue
+        if rec.get("ack"):
+            acked.add(rec["ack"])
+        elif rec.get("id"):
+            queued[rec["id"]] = rec
+    stuck = []
+    side = owner_side()
+    for mid, rec in queued.items():
+        age = now - float(rec.get("ts") or 0)
+        to = str(rec.get("to") or "")
+        if (mid in acked or rec.get("doctor") or to in ("", "owner")
+                or str(rec.get("from") or "").lower() not in side
+                or (names and to not in names)
+                or age <= cfg["stuck_seconds"] or age > cfg["stuck_lookback"]):
+            continue
+        stuck.append(to)
+    out = {"ok": not stuck, "count": len(stuck)}
+    if stuck:
+        out["desks"] = sorted(set(stuck))
+    return out
+
+
+def check_asleep(cfg: dict) -> dict:
+    """Informational: a sleeping desk is not a fault (wake-on-message brings it back)."""
+    try:
+        rows = cfg["fetch"](cfg["deck_url"] + "/v1/agents", cfg["token"])
+    except Exception as err:
+        return {"ok": True, "count": None, "detail": _short(f"unavailable: {type(err).__name__}")}
+    if isinstance(rows, dict):
+        rows = rows.get("agents") or []
+    count = sum(1 for r in rows if isinstance(r, dict)
+                and str(r.get("state") or "").upper() in ("ASLEEP", "OFFLINE"))
+    return {"ok": True, "count": count}
+
+
+# -- the alert ---------------------------------------------------------------
+
+
+def _line(name: str, check: dict, cfg: dict) -> str:
+    if name == "disk_pct":
+        said = f"disk {check.get('value')}% used (red at {cfg['disk_red_pct']:g}%)"
+    elif name == "stuck_messages":
+        said = f"{check.get('count')} owner message(s) unread past 5 min ({', '.join(check.get('desks', []))})"
+    else:
+        said = f"{name}: {check.get('detail') or 'red'}"
+    return f"{said}. {RUNBOOK[name]}"
+
+
+def _alert(cfg: dict, state: dict, checks: dict) -> dict:
+    now, mode = cfg["now"](), cfg["alert"]
+    last = state.setdefault("last_alert", {})
+    red = [n for n, c in checks.items() if not c["ok"]]
+    for name in [n for n in last if n not in red]:
+        del last[name]                       # recovered: its next failure speaks again
+    fresh = [n for n in red if now - float(last.get(n) or -1e18) >= cfg["dedupe_seconds"]]
+    if not fresh:
+        return {"cos": "quiet" if red else "none", "whatsapp": "none"}
+    text = "[Agent Deck] deckdoctor RED -- " + " ".join(_line(n, checks[n], cfg) for n in fresh)
+    if mode == "off":
+        return {"cos": "off", "whatsapp": "off"}
+    _, chief = _desk_names(cfg["roster"])
+    result = {}
+    if mode.startswith("file:"):
+        with open(mode[5:], "a") as fh:
+            fh.write(json.dumps({"to": chief, "from": "deck", "text": text}) + "\n")
+        result = {"cos": "file", "whatsapp": "file"}
+    else:
+        if not chief:
+            result["cos"] = "no_chief"
+        else:
+            try:
+                cfg["post"](chief, text)
+                result["cos"] = "posted"
+            except Exception as err:
+                result["cos"] = _short(f"failed: {err}")
+        try:
+            result["whatsapp"] = cfg["whatsapp"](text)
+        except Exception as err:
+            result["whatsapp"] = _short(f"failed: {err}")
+    for n in fresh:
+        last[n] = now
+    return result
+
+
+def run(cfg: dict) -> tuple[int, dict]:
+    state = _load_state(cfg["state"])
+    checks = {
+        "auth": check_auth(cfg, state),
+        "disk_pct": check_disk(cfg),
+        "daemon": check_daemon(cfg),
+        "stuck_messages": check_stuck(cfg),
+        "desks_asleep": check_asleep(cfg),
+    }
+    ok = all(c["ok"] for c in checks.values())
+    alert = {"cos": "none", "whatsapp": "none"} if ok and not state.get("last_alert") \
+        else _alert(cfg, state, checks)
+    _save_state(cfg["state"], state)
+    return (0 if ok else 1), {"ok": ok, "checks": checks, "alert": alert}
+
+
+def main(argv: list[str] | None = None, env: dict | None = None,
+         cfg: dict | None = None) -> int:
+    code, report = run(cfg or config(env))
+    print(json.dumps(report, separators=(", ", ": ")))
+    return code
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

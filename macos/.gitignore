@@ -1,0 +1,9 @@
+.build/
+.swiftpm/
+DerivedData/
+*.xcuserstate
+build/
+dist/
+.DS_Store
+UITests/*.xcodeproj/
+.grok-reference/

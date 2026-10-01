@@ -1,0 +1,304 @@
+#!/usr/bin/env python3
+"""Did the thing actually happen? Ten steps, each with evidence or nothing.
+
+`bin/deck-status` checks that the code is what we claim. This checks something
+harder: that a real run *occurred*. It invents nothing and simulates nothing --
+you drive the app by hand, then run this, and it reads the live system for
+positive evidence of each step.
+
+Every check asserts the presence of a GOOD signal: a desk on disk, a live pid, a
+rule that was written, an event on the bus. None of them assert the absence of
+an error, because an absence is also exactly what "nothing ran" looks like.
+
+The claim being tested, in one sentence -- the reference product's own pitch:
+
+    You describe a role, it names itself and appears, it hires, it runs on a
+    schedule while you are not looking, and when it meets something new it asks
+    once and never asks again.
+
+Run:  bin/deck-acceptance          (add --json for machine-readable)
+Exits non-zero until every step has evidence.
+"""
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+BUS = Path.home() / ".claude" / "agent-bus"
+EVENTS = BUS / "events.jsonl"
+ROSTER = BUS / "roster.json"
+RULES = BUS / "autoreview.json"
+ROUTINES = BUS / "routines.json"
+ASKS = BUS / "asks.json"
+DECK = os.environ.get("DECK_URL", "http://127.0.0.1:7788")
+
+#: `/api` requires the deck's token now -- a Docker Desktop container reached
+#: the unauthenticated board through the VM gateway, and the box binds a
+#: WireGuard address rather than loopback. The daemon writes the token here at
+#: 0600 on startup whatever its source, so this is the one place to read it.
+#: An unreadable file yields an empty bearer, the daemon answers 401, and the
+#: two steps below already report that as "could not read" rather than passing.
+TOKEN_FILE = Path(
+    os.environ.get("DECK_TOKEN_FILE") or (BUS / "deck-token.txt"))
+
+
+def _auth() -> list[str]:
+    try:
+        token = TOKEN_FILE.read_text().strip()
+    except OSError:
+        token = ""
+    return ["-H", f"Authorization: Bearer {token}"]
+
+WINDOW = float(os.environ.get("DECK_ACCEPT_WINDOW", 24 * 3600))  # look-back
+
+
+def _events(kind: str | None = None, since: float = 0.0) -> list[dict]:
+    if not EVENTS.exists():
+        return []
+    out = []
+    for line in EVENTS.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except Exception:
+            continue                       # a torn line is not a failure
+        if rec.get("ts", 0) < since:
+            continue
+        if kind is None or rec.get("event") == kind:
+            out.append(rec)
+    return out
+
+
+def _json_file(path: Path) -> dict | list | None:
+    try:
+        return json.loads(path.read_text())
+    except Exception:
+        return None
+
+
+def _live_sessions() -> list[dict]:
+    try:
+        out = subprocess.run(
+            ["curl", "-s", "-m", "5", *_auth(), f"{DECK}/api/state"],
+            capture_output=True, text=True, timeout=10).stdout
+        return json.loads(out).get("sessions", [])
+    except Exception:
+        return []
+
+
+# ---------------------------------------------------------------- the steps
+
+def step_desk_exists():
+    """1. A desk was created — by you, in the app."""
+    data = _json_file(ROSTER)
+    desks = (data or {}).get("agents", []) if isinstance(data, dict) else []
+    if not desks:
+        return False, "no desk in roster.json — create one with + in the app"
+    names = ", ".join(d.get("name", "?") for d in desks)
+    return True, f"{len(desks)} desk(s): {names}"
+
+
+def step_hire_logged():
+    """2. The hire is on the audit trail, not just in a file."""
+    hires = _events("hire", time.time() - WINDOW)
+    if not hires:
+        return False, "no `hire` event on the bus"
+    h = hires[-1]
+    return True, f"hire: {h.get('name')} reports_to={h.get('reports_to')!r} by={h.get('by')}"
+
+
+def step_session_seated():
+    """3. A real session is sitting at that desk — a live pid, not a row."""
+    data = _json_file(ROSTER)
+    desks = (data or {}).get("agents", []) if isinstance(data, dict) else []
+    want = {d.get("name") for d in desks}
+    for card in _live_sessions():
+        if card.get("name") in want and card.get("pid"):
+            return True, f"{card['name']} is live (pid {card['pid']}, {card.get('state')})"
+    return False, "no live session is seated at a desk — use Start on the agent"
+
+
+def step_asked_once():
+    """4. It met something with no rule and asked. THE first half of the claim."""
+    asks = _events("approval", time.time() - WINDOW)
+    asked = [a for a in asks if a.get("decision") == "ask"]
+    if not asked:
+        return False, "no approval with decision=ask — nothing has hit an unknown action yet"
+    a = asked[-1]
+    return True, f"asked about {a.get('tool')} in session {a.get('session_id')[:8]}"
+
+
+def step_rule_written():
+    """5. Answering `always` created a NARROW rule, not a broad one."""
+    data = _json_file(RULES)
+    rules = (data or {}).get("rules", []) if isinstance(data, dict) else []
+    made = [r for r in rules if r.get("kind") == "always_allow"]
+    if not made:
+        return False, "no always_allow rule — answer an approval with Always allow"
+    r = made[-1]
+    if r.get("pattern") in ("*", "**") and r.get("cwd") in ("*", "**"):
+        return False, f"rule {r.get('id')} is wide open ({r.get('pattern')}) — that is a bug, not a pass"
+    return True, f"{r.get('id')}: allow {r.get('pattern')!r} in {r.get('cwd')!r}"
+
+
+def step_did_not_ask_again():
+    """6. THE second half, and the whole point. A later identical call was
+    allowed silently by that rule — asked once, never again."""
+    approvals = _events("approval", time.time() - WINDOW)
+    allowed = [a for a in approvals if a.get("decision") == "allow" and a.get("rule_id")]
+    if not allowed:
+        return False, "no approval was auto-allowed by a rule yet — trigger the same action again"
+    a = allowed[-1]
+    return True, f"allowed silently by rule {a.get('rule_id')}"
+
+
+def step_routine_fired():
+    """7. It woke itself, with nobody watching."""
+    runs = _events("routine", time.time() - WINDOW)
+    ok = [r for r in runs if r.get("ok")]
+    if not ok:
+        if not ROUTINES.exists():
+            return False, "no routines.json — add a routine in the app"
+        return False, "a routine exists but has never fired successfully"
+    return True, f"routine {ok[-1].get('id')} delivered to {ok[-1].get('agent')}"
+
+
+def step_reported_upward():
+    """8. Work went to the boss, not to you. The org chart doing its job.
+
+    An edge's `from` and `to` are endpoint OBJECTS, not names -- `{"session_id",
+    "name", "pid"}`, built by `sources.comms._endpoint`. Comparing them as if
+    they were strings raised `TypeError: unhashable type: 'dict'` on the first
+    edge, every time, the moment any desk had a boss at all: this step could
+    not go green for a reason that had nothing to do with the run.
+
+    `status` is the second half. An edge exists as soon as the SENDER's
+    transcript shows a `SendMessage` tool_use -- before, and whether or not,
+    anything arrives; `sources.comms` marks that case `sent` and only says
+    `delivered` once the receiver's own transcript carries the message. Both
+    states were observed here in one run: a desk that had renamed itself was
+    unreachable under its new name, SendMessage answered "no reachable session
+    named drift-watch", and an edge appeared for it regardless. Accepting
+    `sent` would score "work reported to the boss" on a report nobody got.
+    """
+    data = _json_file(ROSTER)
+    desks = (data or {}).get("agents", []) if isinstance(data, dict) else []
+    bosses = {d["name"]: d.get("reports_to") for d in desks if d.get("reports_to")}
+    if not bosses:
+        return False, "no desk reports to another — hire under a boss to test this"
+    try:
+        out = subprocess.run(
+            ["curl", "-s", "-m", "5", *_auth(), f"{DECK}/api/comms"],
+            capture_output=True, text=True, timeout=10).stdout
+        edges = json.loads(out).get("edges", [])
+    except Exception:
+        return False, "could not read /api/comms"
+    undelivered = 0
+    for e in edges:
+        sender = (e.get("from") or {}).get("name")
+        target = (e.get("to") or {}).get("name")
+        if not sender or bosses.get(sender) != target:
+            continue
+        if e.get("status") != "delivered":
+            undelivered += 1
+            continue
+        return True, f"{sender} -> {target} (its boss), delivered"
+    if undelivered:
+        return False, (f"{undelivered} message(s) to a boss never arrived "
+                       f"(status=sent) — the boss is not reachable by that name")
+    return False, "no message from a desk to its boss yet"
+
+
+def step_named_itself():
+    """9. The agent chose who it is -- the hire's own name, not the placeholder.
+
+    A desk patch under the name it was hired with is bookkeeping; the evidence
+    is `actor != name`, which only happens when a session emits a YOS_DESK line
+    naming itself something else. A `refused` result is the opposite of
+    evidence: it is exactly the case where the agent believed it had taken the
+    desk and the board disagreed.
+    """
+    for rec in reversed(_events("desk", time.time() - WINDOW)):
+        if rec.get("result") != "patched":
+            continue
+        actor, name = rec.get("actor"), rec.get("name")
+        if actor and name and actor != name:
+            return True, f"{actor} named itself {name}"
+    return False, "no agent has chosen its own name — hire one and let it answer"
+
+
+def step_agent_hired():
+    """10. The team grew without the owner.
+
+    Every hire until the harvester was wired carried `by=owner`, so counting
+    those would have read green before the capability existed. `hire_refused`
+    is the caps working, not the capability being exercised.
+    """
+    for rec in reversed(_events("hire", time.time() - WINDOW)):
+        by = rec.get("by")
+        if by and by != "owner":
+            return True, f"{by} hired {rec.get('name')}"
+    return False, "every hire so far is yours — no agent has hired anyone"
+
+
+STEPS = [
+    ("desk created", step_desk_exists),
+    ("hire on the audit trail", step_hire_logged),
+    ("a session is seated at it", step_session_seated),
+    ("it asked once", step_asked_once),
+    ("a narrow rule was written", step_rule_written),
+    ("it did not ask again", step_did_not_ask_again),
+    ("a routine fired by itself", step_routine_fired),
+    ("work reported to the boss", step_reported_upward),
+    ("it named itself", step_named_itself),
+    ("an agent hired another agent", step_agent_hired),
+]
+
+#: Named here so a green run is never mistaken for "the same as the reference".
+NOT_TESTED = [
+    "A browser doing real work on a real site. Nothing has driven Chrome yet.",
+    "Anything running while this Mac is asleep. It all lives here, not on the box.",
+    "A phone. /v1 is bound to 127.0.0.1 and no transport to a device is decided.",
+    "Connectors — mail, calendar, notes. None exist.",
+]
+
+
+def main() -> int:
+    as_json = "--json" in sys.argv
+    results = []
+    for label, fn in STEPS:
+        try:
+            ok, detail = fn()
+        except Exception as exc:            # a broken check is a FAIL, never a pass
+            ok, detail = False, f"check raised {type(exc).__name__}: {exc}"
+        results.append({"step": label, "ok": bool(ok), "detail": detail})
+
+    done = sum(r["ok"] for r in results)
+    if as_json:
+        print(json.dumps({"passed": done, "total": len(results),
+                          "steps": results, "not_tested": NOT_TESTED}, indent=2))
+        return 0 if done == len(results) else 1
+
+    print(f"\n  THE RUN — {done}/{len(results)} steps have evidence\n")
+    for i, r in enumerate(results, 1):
+        mark = "OK  " if r["ok"] else "--  "
+        print(f"  {mark}{i}. {r['step']}")
+        print(f"        {r['detail']}")
+    print("\n  Not tested by this script, however green it goes:")
+    for n in NOT_TESTED:
+        print(f"    - {n}")
+    if done == len(results):
+        print("\n  Every step happened. This is the run, not a claim about it.\n")
+        return 0
+    print(f"\n  {len(results) - done} step(s) have no evidence yet.\n")
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

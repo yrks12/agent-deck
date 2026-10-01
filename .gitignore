@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Daemon log — contains request lines and local paths.
+.agent-deck.log
+
+.DS_Store

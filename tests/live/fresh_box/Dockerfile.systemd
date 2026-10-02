@@ -1,0 +1,16 @@
+# L0 fresh box: a bare Ubuntu 24.04 with systemd as PID 1, nothing of ours on it.
+# Run with:  docker run -d --privileged --cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:rw <image>
+FROM ubuntu:24.04
+ENV container=docker DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      systemd systemd-sysv dbus sudo curl ca-certificates iproute2 jq python3 openssl \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -f /lib/systemd/system/multi-user.target.wants/* \
+             /etc/systemd/system/*.wants/* \
+             /lib/systemd/system/local-fs.target.wants/* \
+             /lib/systemd/system/sockets.target.wants/*udev* \
+             /lib/systemd/system/sockets.target.wants/*initctl* \
+             /lib/systemd/system/sysinit.target.wants/systemd-tmpfiles-setup*
+VOLUME ["/sys/fs/cgroup"]
+STOPSIGNAL SIGRTMIN+3
+CMD ["/sbin/init"]

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  PREPARED, NOT ENABLED. A free Apple team cannot sign aps-environment, so this
+  file is referenced by nothing. With the paid Developer account:
+    1. project.yml, target AgentDeckPhone settings:
+         CODE_SIGN_ENTITLEMENTS: AgentDeckPhone/APNs.entitlements
+    2. project.yml info: DeckAPNsEnabled: true
+  PushRegistration.swift then registers for remote notifications and hands the
+  device token to the deck. See docs/notifications.md.
+-->
+<plist version="1.0">
+<dict>
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>

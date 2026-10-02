@@ -1,0 +1,38 @@
+# deckdoctor -- the box's smoke alarm. Run by deckdoctor.timer every ten minutes.
+# RENDERED from deploy/templates/deckdoctor.service.in by deploy/render.py;
+# edit /etc/agent-deck/deck.toml, not the installed copy.
+#
+# One-shot and read-only: it prints one JSON line (see `journalctl -u
+# deckdoctor -n 1`), exits 1 when red, and speaks to the chief's thread at most
+# once per check per six hours. It never stops or deletes anything.
+#
+# Exit 1 on red marks THIS unit failed on purpose: `systemctl --failed` then
+# shows a red box without anyone reading a log.
+
+[Unit]
+Description=Agent Deck box health (disk, login, deck, undelivered messages)
+Documentation=file:@APP_DIR@/docs/the-box.md
+
+[Service]
+Type=oneshot
+User=@DECK_USER@
+Group=@DECK_USER@
+WorkingDirectory=@APP_DIR@
+# The CLI login, so `claude auth status` and the six-hourly live probe see what
+# the desks see. Optional (-): a missing file is itself a red the doctor reports.
+# No AGENT_DECK_TOKEN here: the doctor reads the bus's deck-token.txt itself.
+EnvironmentFile=-@OAUTH_ENV@
+# DECK_WA_URL / DECK_WA_TOKEN, so a red reaches a phone and not only the
+# chief's thread. The file is 0600 root; systemd reads it before dropping to
+# the service user, so the doctor never needs to read it itself.
+EnvironmentFile=-/etc/agent-deck/agentdeck.env
+Environment=DECK_URL=@DECK_URL@
+Environment=DISK_RED_PCT=85
+# ~/.local/bin is where `claude` lives for the service user; systemd's PATH lacks it.
+Environment=PATH=@DECK_HOME@/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=@APP_DIR@/.venv/bin/python @APP_DIR@/bin/deckdoctor
+TimeoutStartSec=180
+Nice=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=deckdoctor

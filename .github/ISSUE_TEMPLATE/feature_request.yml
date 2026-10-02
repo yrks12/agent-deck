@@ -1,0 +1,31 @@
+name: Feature request
+description: Propose a measurable Agent Deck capability.
+title: "feat: "
+labels: [enhancement, triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What outcome is blocked today, and for whom?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe observable behavior, not an implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: Acceptance evidence
+      description: What detector or live proof would demonstrate completion?
+    validations:
+      required: true
+  - type: textarea
+    id: gaps
+    attributes:
+      label: Constraints and known gaps
+      description: Include security, platform, VPS, and compatibility limits.

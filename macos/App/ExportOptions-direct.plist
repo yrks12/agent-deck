@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- xcodebuild -exportArchive for the Direct channel (Developer ID).
+     Used by Scripts/build-release.sh only when a "Developer ID Application"
+     identity and DECK_TEAM_ID exist; teamID is filled in from DECK_TEAM_ID
+     at run time, never committed. -->
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>developer-id</string>
+	<key>signingStyle</key>
+	<string>manual</string>
+	<key>signingCertificate</key>
+	<string>Developer ID Application</string>
+	<key>teamID</key>
+	<string></string>
+	<key>destination</key>
+	<string>export</string>
+</dict>
+</plist>

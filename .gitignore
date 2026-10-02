@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Daemon log — contains request lines and local paths.
+.agent-deck.log
+
+.DS_Store
+
+# Local release builds (scripts/release.sh, scripts/release-mac.sh)
+/dist/

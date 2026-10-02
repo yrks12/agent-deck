@@ -1,0 +1,143 @@
+# The shipping Xcode project for Agent Deck, both distribution channels, plus
+# the UI tests. Generate it with:
+#
+#     xcodegen generate --spec macos/App/project.yml
+#
+# and the project lands at macos/App/AgentDeck.xcodeproj (gitignored: it is a
+# build artefact of this file, never edited by hand).
+#
+# Contract C1 of docs/plans/2026-09-30-submission-ready.md:
+#
+#   AgentDeck     Direct channel. Developer ID + notarization, hardened
+#                 runtime, NOT sandboxed. Compiles with DECK_DIRECT. The only
+#                 build that may ever carry the Mac bridge executor
+#                 (DeckBridgeExec, added here by slice X2 once it exists).
+#   AgentDeckMAS  Mac App Store channel. App Sandbox on. Compiles with
+#                 DECK_APPSTORE. Links DeckKit + DeckUI ONLY, so no
+#                 posix_spawn / sandbox-exec code can reach it once X2 has
+#                 moved MacExecutor out of DeckKit. `Scripts/preflight.sh
+#                 appstore` checks the binary for exactly that.
+#   DeckUITests   XCUITest bundle. Compiles ALL of macos/UITests (the
+#                 DeckUITests/ folder and the files beside it), hosted by
+#                 AgentDeck. Every case is default-deny: it skips unless
+#                 YOS_SCREEN_IS_FREE=1 (see UITests/DeckUITests/ScreenGate.swift).
+#
+# Both apps compile the SAME Sources/DeckApp @main that `swift run DeckApp`
+# does and link the SAME DeckKit/DeckUI products from the package, so there is
+# no second copy of the app to drift.
+#
+# Versions: MARKETING_VERSION / CURRENT_PROJECT_VERSION below are dev
+# placeholders. `Scripts/build-release.sh` overrides them on the xcodebuild
+# command line with the repo-root VERSION file and `git rev-list --count HEAD`,
+# and preflight fails any bundle whose version is not the repo's.
+name: AgentDeck
+options:
+  bundleIdPrefix: dev.agentdeck
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+packages:
+  DeckPackage:
+    path: ..
+
+settings:
+  base:
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    SWIFT_VERSION: "5.0"
+    ARCHS: "arm64 x86_64"
+    # The bundle id and the copyright line are per build machine, not per repo:
+    # build-release.sh passes both from Scripts/bundle-id.sh.
+    DECK_BUNDLE_ID: dev.agentdeck.app
+    DECK_COPYRIGHT: "© 2026 Agent Deck contributors"
+    MARKETING_VERSION: "0.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # Signing: no Apple identity exists yet (owner decision D1). Ad-hoc by
+    # default; build-release.sh passes DECK_SIGN_IDENTITY (e.g. the
+    # self-signed "Agent Deck Local", later "Developer ID Application: …").
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+    DEAD_CODE_STRIPPING: "YES"
+  configs:
+    Release:
+      ONLY_ACTIVE_ARCH: "NO"
+
+targetTemplates:
+  DeckAppChannel:
+    type: application
+    platform: macOS
+    sources:
+      - path: ../Sources/DeckApp
+      - path: Assets.xcassets
+      - path: PrivacyInfo.xcprivacy
+        buildPhase: resources
+    dependencies:
+      - package: DeckPackage
+        product: DeckKit
+      - package: DeckPackage
+        product: DeckUI
+
+targets:
+  AgentDeck:
+    templates: [DeckAppChannel]
+    settings:
+      base:
+        PRODUCT_NAME: Agent Deck
+        PRODUCT_BUNDLE_IDENTIFIER: $(DECK_BUNDLE_ID)
+        INFOPLIST_FILE: Info.plist
+        GENERATE_INFOPLIST_FILE: "NO"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DECK_DIRECT"
+        CODE_SIGN_ENTITLEMENTS: AgentDeck-Direct.entitlements
+        ENABLE_HARDENED_RUNTIME: "YES"
+
+  AgentDeckMAS:
+    templates: [DeckAppChannel]
+    settings:
+      base:
+        PRODUCT_NAME: Agent Deck
+        PRODUCT_BUNDLE_IDENTIFIER: $(DECK_BUNDLE_ID)
+        INFOPLIST_FILE: Info.plist
+        GENERATE_INFOPLIST_FILE: "NO"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DECK_APPSTORE"
+        CODE_SIGN_ENTITLEMENTS: AgentDeck-AppStore.entitlements
+        ENABLE_APP_SANDBOX: "YES"
+        ENABLE_HARDENED_RUNTIME: "YES"
+
+  DeckUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: ../UITests
+        excludes:
+          - "Artifacts/**"
+          - "project.yml"
+          - "*.xcodeproj"
+    dependencies:
+      - target: AgentDeck
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(DECK_BUNDLE_ID).uitests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_TARGET_NAME: AgentDeck
+
+schemes:
+  AgentDeck:
+    build:
+      targets:
+        AgentDeck: all
+        DeckUITests: [test]
+    test:
+      targets:
+        - DeckUITests
+    archive:
+      config: Release
+  AgentDeckMAS:
+    build:
+      targets:
+        AgentDeckMAS: all
+    archive:
+      config: Release

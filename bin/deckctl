@@ -1,0 +1,963 @@
+#!/usr/bin/env python3
+"""deckctl -- the admin command for an Agent Deck server (contract K5).
+
+Runs as root (it re-runs itself under sudo and says why). Stdlib only. Every
+command takes --json. Exit 0 = done / healthy, 1 = something is wrong (one plain
+sentence says what and what to do), 2 = bad usage.
+
+  status                 one screen: running?, address, certificate, devices, login, version
+  pair [--name N]        a one-time pairing code (text + QR), good for 15 minutes
+  devices | revoke <id>  list / remove the devices that may talk to this deck
+  login                  sign Claude in (its own login) for the service user, then prove it
+  login --account ID [--label L] [--console]   sign a SECOND Claude account in, in its own dir
+  accounts               the Claude accounts desks can run under, and whether each is signed in
+  set-openai-key [--file f]   check the key with OpenAI, store it, restart the deck
+  doctor                 is everything working? (PASS, or a sentence and the fix)
+  config get|set <key> [value]   read / change /etc/agent-deck/deck.toml
+  version                this server's version (and the latest, if a channel is set)
+  migrate [--dry-run]    write deck.toml from the live agentdeck.service (an existing box)
+  update [--check] [--to V]   install the latest release; roll back if it does not answer
+  uninstall [--purge]    remove Agent Deck; keeps your data unless --purge
+
+It is deliberately not `deck`: bin/deck is the agents' own office CLI, and an admin
+verb one typo away from every desk is how a box gets uninstalled by a model.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import tarfile
+import time
+import datetime as _dt
+import getpass
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+ROOT = Path(os.environ.get("DECK_ROOT") or Path(__file__).resolve().parent.parent)
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from server import accounts, atomic, deckconfig, doctor_checks, pairing  # noqa: E402
+
+OPENAI_MODELS = "https://api.openai.com/v1/models"
+UNIT = doctor_checks.UNIT
+# Keys whose change is visible to the running deck; everything else is read fresh
+# by deckctl / the doctor and needs no restart.
+RESTARTS = ("deck.", "network.", "claude.oauth_env", "claude.usage_meter", "desks.")
+
+
+UNIT_PATH = "/etc/systemd/system/agentdeck.service"
+
+
+class Refuse(Exception):
+    """A plain-sentence failure: printed, exit code `code`."""
+
+    def __init__(self, message: str, code: int = 1) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+# -- the machine, behind one object (tests replace every method) -------------
+
+
+def _run(argv, timeout=60):
+    try:
+        done = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+    except FileNotFoundError:
+        return 127, f"{argv[0]}: not found"
+    except subprocess.TimeoutExpired:
+        return 124, f"timed out after {timeout:.0f}s"
+    return done.returncode, ((done.stdout or "") + (done.stderr or "")).strip()
+
+
+def _http_status(url, headers=None):
+    req = urllib.request.Request(url, headers=headers or {})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.status
+    except urllib.error.HTTPError as err:
+        return err.code
+    except (OSError, ValueError):
+        return None
+
+
+def _fetch(url):
+    with urllib.request.urlopen(url, timeout=60) as resp:
+        return resp.read()
+
+
+def _wg_addresses(run):
+    """{address: interface} for every WireGuard interface on this machine."""
+    code, out = run(["ip", "-o", "-4", "addr", "show"], 10)
+    found = {}
+    for line in out.splitlines() if code == 0 else []:
+        cols = line.split()
+        if len(cols) >= 4 and cols[1].startswith("wg"):
+            found[cols[3].split("/")[0]] = cols[1]
+    return found
+
+
+def _fix_owner(paths, user):
+    if os.geteuid() != 0:
+        return
+    for p in paths:
+        shutil.chown(p, user=user, group=user)
+
+
+def _pin(host):
+    code, out = _run(["sh", "-c",
+                      f"echo | openssl s_client -connect {host}:443 -servername {host} 2>/dev/null "
+                      "| openssl x509 -pubkey -noout | openssl pkey -pubin -outform der "
+                      "| openssl dgst -sha256 -binary | base64"], 20)
+    if code != 0 or not out.strip():
+        raise Refuse(f"Could not read the certificate from {host}, so the app cannot be told "
+                     "how to trust it. Run deckctl doctor.")
+    return "sha256/" + out.strip()
+
+
+class Ctl:
+    def __init__(self, *, config_path=deckconfig.DEFAULT_PATH, env_file=None, euid=None,
+                 run=_run, run_tty=None, secret=None, http_status=_http_status,
+                 host_factory=None, fix_owner=_fix_owner, exec_sudo=None,
+                 clock=None, today=None, pin=_pin, out=None, err=None,
+                 unit_path=UNIT_PATH, wg_addresses=None, fetch=None, sleep=None,
+                 system_dir="/etc/systemd/system", logrotate_path="/etc/logrotate.d/agent-deck",
+                 caddy_site="/etc/caddy/Caddyfile.d/agent-deck.caddy",
+                 bin_path="/usr/local/bin/deckctl", prompt=None):
+        self.config_path = Path(config_path)
+        self.env_file = Path(env_file) if env_file else self.config_path.parent / "agentdeck.env"
+        self.euid = os.geteuid() if euid is None else euid
+        self.run = run
+        self.run_tty = run_tty or (lambda argv: subprocess.call(argv))
+        self.secret = secret or (lambda prompt: getpass.getpass(prompt))
+        self.http_status = http_status
+        self.host_factory = host_factory or (lambda cfg: doctor_checks.Host(cfg))
+        self.fix_owner = fix_owner
+        self.exec_sudo = exec_sudo or (lambda argv: os.execvp(argv[0], argv))
+        self.clock = clock or time.time
+        self.today = today or (lambda: _dt.date.today().isoformat())
+        self.pin = pin
+        self.unit_path = Path(unit_path)
+        self.fetch = fetch or _fetch
+        self.system_dir, self.logrotate_path = Path(system_dir), Path(logrotate_path)
+        self.caddy_site, self.bin_path = Path(caddy_site), Path(bin_path)
+        self.prompt = prompt or input
+        self.sleep = sleep or time.sleep
+        self.wg_addresses = wg_addresses or (lambda: _wg_addresses(self.run))
+        self.out = out or sys.stdout
+        self.err = err or sys.stderr
+
+    def say(self, text=""):
+        print(text, file=self.out)
+
+    def warn(self, text):
+        print(text, file=self.err)
+
+    def config(self):
+        try:
+            return deckconfig.load(self.config_path, env={})
+        except deckconfig.ConfigError as exc:
+            raise Refuse(str(exc)) from None
+
+
+# -- small shared helpers ----------------------------------------------------
+
+
+def address(cfg) -> str:
+    if cfg.network.hostname:
+        return f"https://{cfg.network.hostname}"
+    return f"http://{cfg.deck.bind}:{cfg.deck.port}"
+
+
+def _emit(ctl, args, data, text):
+    if args.json:
+        ctl.say(json.dumps(data, indent=1))
+    else:
+        ctl.say(text)
+
+
+def _days_since(iso: str, today: str):
+    try:
+        return (_dt.date.fromisoformat(today) - _dt.date.fromisoformat(iso[:10])).days
+    except ValueError:
+        return None
+
+
+# -- config file editing -----------------------------------------------------
+
+
+def _literal(key, raw: str) -> str:
+    default = deckconfig.DeckConfig().get(key)
+    if isinstance(default, bool):
+        if raw.strip().lower() not in ("true", "false"):
+            raise Refuse(f"{key} must be true or false.")
+        return raw.strip().lower()
+    if isinstance(default, int):
+        return raw.strip()
+    if isinstance(default, tuple):
+        text = raw.strip()
+        if text.startswith("["):
+            return text
+        items = [p.strip() for p in text.split(",") if p.strip()]
+        if key == "deck.reserved_ports":
+            return "[" + ", ".join(items) + "]"
+        return "[" + ", ".join(json.dumps(i) for i in items) + "]"
+    return json.dumps(raw)
+
+
+def set_toml(text: str, section: str, key: str, literal: str) -> str:
+    """Change one `key = value` in place, keeping every other line (and the comment)."""
+    lines = text.split("\n") if text else []
+    head = next((i for i, l in enumerate(lines) if l.strip() == f"[{section}]"), None)
+    if head is None:
+        body = text if text.endswith("\n") or not text else text + "\n"
+        return f"{body}{chr(10) if body else ''}[{section}]\n{key} = {literal}\n"
+    end = next((i for i in range(head + 1, len(lines)) if lines[i].strip().startswith("[")),
+               len(lines))
+    pat = re.compile(rf"^(\s*{re.escape(key)}\s*=\s*)(.*?)(\s+#.*)?$")
+    for i in range(head + 1, end):
+        m = pat.match(lines[i])
+        if m:
+            lines[i] = f"{m.group(1)}{literal}{m.group(3) or ''}"
+            return "\n".join(lines)
+    last = max((i for i in range(head + 1, end) if lines[i].strip()), default=head)
+    lines.insert(last + 1, f"{key} = {literal}")
+    return "\n".join(lines)
+
+
+def apply_config(ctl, key: str, raw: str, *, restart: bool | None = None) -> str:
+    """Validate, write, re-render and restart only if the change is visible. Returns a sentence."""
+    try:
+        old = ctl.config().get(key)
+    except KeyError:
+        raise Refuse(f"{key} is not a setting. Run deckctl config get <key> with one of "
+                     "deck.*, network.*, desks.*, claude.*, doctor.*, update.*.", 2) from None
+    section, _, name = key.partition(".")
+    current = ctl.config_path.read_text(encoding="utf-8") if ctl.config_path.exists() else ""
+    new_text = set_toml(current, section, name, _literal(key, raw))
+    tmp = ctl.config_path.with_name(ctl.config_path.name + ".check")
+    try:
+        tmp.write_text(new_text, encoding="utf-8")
+        try:
+            new = deckconfig.load(tmp, env={}).get(key)
+        except deckconfig.ConfigError as exc:
+            raise Refuse(str(exc)) from None
+    finally:
+        tmp.unlink(missing_ok=True)
+    if new == old and ctl.config_path.exists():
+        return f"{key} is already {_show(new)}; nothing changed."
+    atomic.write_text(ctl.config_path, new_text, mode=0o644)
+    visible = key.startswith(RESTARTS) if restart is None else restart
+    if not visible:
+        return f"Set {key} to {_show(new)}. No restart needed."
+    cfg = ctl.config()
+    render = Path(cfg.deck.app_dir) / "deploy" / "render.py"
+    if render.exists():
+        code, out = ctl.run([sys.executable, str(render), "--config", str(ctl.config_path)], 120)
+        if code != 0:
+            raise Refuse(f"Saved {key}, but the unit files could not be regenerated: {out[:200]}. "
+                         "Nothing was restarted.")
+    code, out = ctl.run(["systemctl", "restart", UNIT], 60)
+    if code != 0:
+        raise Refuse(f"Saved {key}, but Agent Deck did not restart: {out[:200]}. "
+                     f"Run journalctl -u {UNIT} -n 30.")
+    return f"Set {key} to {_show(new)} and restarted Agent Deck."
+
+
+def _show(value) -> str:
+    if isinstance(value, tuple):
+        return json.dumps(list(value))
+    return str(value).lower() if isinstance(value, bool) else str(value)
+
+
+# -- commands ----------------------------------------------------------------
+
+
+def cmd_status(ctl, args):
+    cfg = ctl.config()
+    host = ctl.host_factory(cfg)
+    running = bool(host.active(UNIT))
+    days = host.cert_days(cfg.network.hostname) if doctor_checks._has_certificate(cfg) else None
+    try:
+        devices = len(pairing.DeviceStore(cfg.deck.state_dir).list())
+    except OSError:
+        devices = 0
+    age = _days_since(cfg.claude.token_issued, ctl.today()) if cfg.claude.token_issued else None
+    data = {"running": running, "address": address(cfg), "cert_days": days, "devices": devices,
+            "claude_login_days": age, "version": host.version(), "name": cfg.deck.name}
+    lines = [f"{cfg.deck.name} is running." if running else
+             f"{cfg.deck.name} is not running. Run  sudo systemctl start {UNIT}.",
+             f"Address:   {data['address']}"]
+    if days is not None:
+        lines.append(f"Certificate: {int(days)} days left")
+    lines.append(f"Devices:   {devices} device{'' if devices == 1 else 's'}")
+    lines.append("Claude login: " + (f"{age} days old" if age is not None else "date not recorded"))
+    lines.append(f"Version:   {data['version']}")
+    _emit(ctl, args, data, "\n".join(lines))
+    return 0 if running else 1
+
+
+def cmd_pair(ctl, args):
+    cfg = ctl.config()
+    if not cfg.network.hostname:
+        raise Refuse("This deck has no secure address yet, so the app cannot pair with it. "
+                     "Run  sudo deckctl config set network.hostname <your address>  first.")
+    tls, pin = ("pin", ctl.pin(cfg.network.hostname)) if cfg.network.tls == "self-signed" \
+        else ("ca", "")
+    store = pairing.PairingStore(cfg.deck.state_dir, clock=ctl.clock)
+    code, exp = pairing.mint_code(store, url=address(cfg), name=args.name or cfg.deck.name,
+                                  tls=tls, pin=pin)
+    ctl.fix_owner(_state_files(cfg), cfg.deck.user)
+    when = _dt.datetime.fromtimestamp(exp).strftime("%H:%M")
+    data = {"code": code, "expires": exp, "url": address(cfg)}
+    if args.json:
+        ctl.say(json.dumps(data, indent=1))
+        return 0
+    rc, qr = ctl.run(["qrencode", "-t", "ANSIUTF8", code], 10)
+    if rc == 0 and qr:
+        ctl.say(qr)
+    ctl.say("Paste this into the Agent Deck app, or scan the picture above:")
+    ctl.say(code)
+    ctl.say(f"It works once and expires at {when} (in 15 minutes).")
+    return 0
+
+
+def _state_files(cfg):
+    d = Path(cfg.deck.state_dir)
+    return [p for p in [d, *sorted(d.glob("*.json")), *sorted(d.glob(".*.lock"))] if p.exists()]
+
+
+def cmd_devices(ctl, args):
+    cfg = ctl.config()
+    rows = pairing.DeviceStore(cfg.deck.state_dir).list()
+    data = [{"id": d.id, "name": d.name, "created": d.created, "last_seen": d.last_seen}
+            for d in rows]
+    if args.json:
+        ctl.say(json.dumps(data, indent=1))
+        return 0
+    if not rows:
+        ctl.say("No devices are paired. Run  sudo deckctl pair  to add one.")
+        return 0
+    for d in data:
+        seen = _dt.datetime.fromtimestamp(d["last_seen"]).strftime("%Y-%m-%d %H:%M")
+        ctl.say(f"{d['id']}  {d['name']}  (last seen {seen})")
+    return 0
+
+
+def cmd_revoke(ctl, args):
+    cfg = ctl.config()
+    try:
+        gone = pairing.DeviceStore(cfg.deck.state_dir).revoke(args.id)
+    except ValueError as exc:
+        raise Refuse(str(exc)) from None
+    if not gone:
+        raise Refuse(f"There is no device with the id {args.id}. Run  sudo deckctl devices  "
+                     "to see the ids.")
+    ctl.fix_owner(_state_files(cfg), cfg.deck.user)
+    _emit(ctl, args, {"revoked": args.id}, f"Removed {args.id}. That device can no longer connect.")
+    return 0
+
+
+def _signed_in(ctl, prefix, claude) -> bool:
+    """`claude auth status --json` -- reads the CLI's own login, spends no usage."""
+    code, out = ctl.run([*prefix, claude, "auth", "status", "--json"], 60)
+    try:
+        return code == 0 and json.loads(out).get("loggedIn") is True
+    except (ValueError, AttributeError):
+        return False
+
+
+#: Shared with every account by symlink. `projects`: the transcripts and desk
+#: memory, which is what lets a desk resume in another account (MEASURED, probe
+#: P2) -- and the link survives the session (P3). `agent-bus`: the hooks' last
+#: resort if DECK_BUS_DIR is dropped. `skills`: deck-managed skills.
+SHARED = ("projects", "skills", "agent-bus")
+
+
+def _registry(cfg) -> Path:
+    return Path(cfg.deck.home) / ".claude" / "agent-bus" / "accounts.json"
+
+
+def _rows(cfg) -> list:
+    try:
+        rows = json.loads(_registry(cfg).read_text())
+    except (OSError, ValueError):
+        return []
+    return rows if isinstance(rows, list) else []
+
+
+def _account_dir(ctl, cfg, ident: str) -> Path:
+    """`<home>/.claude-accounts/<id>`, 0700, sharing SHARED with main, with
+    the first-run answers a headless desk cannot give seeded in its own
+    `.claude.json` (MEASURED, P1: the CLI reads it from inside the dir)."""
+    home = Path(cfg.deck.home)
+    root, main = home / accounts.ACCOUNTS_ROOT_NAME, home / ".claude"
+    acct = root / ident
+    acct.mkdir(parents=True, exist_ok=True)
+    root.chmod(0o700)
+    acct.chmod(0o700)
+    for name in SHARED:
+        (main / name).mkdir(parents=True, exist_ok=True)
+        link = acct / name
+        if not link.exists() and not link.is_symlink():
+            link.symlink_to(main / name)
+    seed = acct / ".claude.json"
+    if not seed.exists():
+        atomic.write_text(seed, json.dumps({"hasCompletedOnboarding": True,
+                                            "bypassPermissionsModeAccepted": True}), mode=0o600)
+    ctl.fix_owner([root, acct, seed], cfg.deck.user)
+    return acct
+
+
+def _register(ctl, cfg, row: dict) -> None:
+    rows = [r for r in _rows(cfg) if not (isinstance(r, dict) and r.get("id") == row["id"])]
+    path = _registry(cfg)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    atomic.write_text(path, json.dumps(rows + [row], indent=1), mode=0o600)
+    ctl.fix_owner([path], cfg.deck.user)
+
+
+def _login_account(ctl, args, cfg, claude) -> int:
+    ident = args.account
+    if not accounts.valid_id(ident):
+        raise Refuse(f"{ident!r} cannot be an account id: use lowercase letters, digits, - or _ "
+                     "(and not 'main', which is the deck's own login).", 2)
+    acct = _account_dir(ctl, cfg, ident)
+    prefix = ["sudo", "-u", cfg.deck.user, "-H", "env", f"CLAUDE_CONFIG_DIR={acct}"]
+    if ctl.run_tty([*prefix, claude, "auth", "login", *(["--console"] if args.console else [])]) != 0:
+        raise Refuse(f"Claude's own sign-in did not finish. Run  sudo deckctl login --account "
+                     f"{ident}  to try again.")
+    if not _signed_in(ctl, prefix, claude):
+        raise Refuse(f"Claude says account {ident} is not signed in after the login. Run  sudo "
+                     f"deckctl login --account {ident}  again and finish the steps.")
+    _register(ctl, cfg, {"id": ident, "label": args.label or ident,
+                         "kind": "api" if args.console else "subscription",
+                         "config_dir": str(acct), "added_at": ctl.clock()})
+    _emit(ctl, args, {"ok": True, "account": ident, "config_dir": str(acct)},
+          f"Claude account {ident} is signed in and desks can run on it. Agent Deck keeps no "
+          "copy of the login; the CLI refreshes it whenever a desk runs there.")
+    return 0
+
+
+def cmd_accounts(ctl, args):
+    cfg = ctl.config()
+    claude = doctor_checks.claude_bin(cfg)
+    base = ["sudo", "-u", cfg.deck.user, "-H"]
+    listed = [{"id": "main", "label": "Main", "kind": "subscription",
+               "config_dir": str(Path(cfg.deck.home) / ".claude"),
+               "signed_in": _signed_in(ctl, base, claude)}]
+    for row in _rows(cfg):
+        if not isinstance(row, dict) or not accounts.valid_id(str(row.get("id") or "")):
+            continue
+        prefix = [*base, "env", f"CLAUDE_CONFIG_DIR={row.get('config_dir')}"]
+        listed.append({"id": row["id"], "label": row.get("label") or row["id"],
+                       "kind": row.get("kind") or "subscription",
+                       "config_dir": row.get("config_dir"),
+                       "signed_in": _signed_in(ctl, prefix, claude)})
+    _emit(ctl, args, listed, "\n".join(
+        f"{a['id']:<12} {a['label']:<16} {a['kind']:<12} "
+        f"{'signed in' if a['signed_in'] else 'NOT signed in'}" for a in listed))
+    return 0 if all(a["signed_in"] for a in listed) else 1
+
+
+def cmd_login(ctl, args):
+    """Sign Claude in through the CLI's OWN login, for the service user.
+
+    TERMS (claude-dashbaord-oss-terms.md): Agent Deck must not "collect, store,
+    or intermediate Claude.ai credentials or session tokens". So this never asks
+    for, reads, writes or prints a token: `claude auth login` writes the CLI's
+    `.credentials.json` and the CLI's daemon refreshes it. The setup-token the
+    old login kept in claude.oauth_env is deleted once this login is proven.
+    """
+    if args.token_file:
+        raise Refuse("Agent Deck no longer stores Claude tokens, so it cannot take a token "
+                     "file. Run  sudo deckctl login  and sign in with the link Claude prints.")
+    cfg = ctl.config()
+    user = cfg.deck.user
+    claude = doctor_checks.claude_bin(cfg)  # by path: sudo's PATH has no ~/.local/bin
+    if args.account is not None:
+        return _login_account(ctl, args, cfg, claude)
+    prefix = ["sudo", "-u", user, "-H"]
+    if ctl.run_tty([*prefix, claude, "auth", "login"]) != 0:
+        raise Refuse("Claude's own sign-in did not finish. Run  sudo deckctl login  to try again.")
+    if not _signed_in(ctl, prefix, claude):
+        raise Refuse("Claude says it is not signed in after the login. Run  sudo deckctl "
+                     "login  again and finish the steps on the link it prints.")
+    (Path(cfg.deck.state_dir) / "doctor-state.json").unlink(missing_ok=True)
+    # Retire the old setup-token. The unit loads it into the deck's environment
+    # at start, so a running deck is restarted to drop it.
+    old = Path(cfg.claude.oauth_env)
+    retired = old.is_file()
+    if retired:
+        old.unlink()
+    restarted = False
+    if retired and ctl.host_factory(cfg).active(UNIT):
+        rc, out = ctl.run(["systemctl", "restart", UNIT], 60)
+        if rc != 0:
+            raise Refuse(f"Claude is signed in, but Agent Deck did not restart: {out[:200]}. "
+                         f"Run  sudo systemctl restart {UNIT}.")
+        restarted = True
+    _emit(ctl, args, {"ok": True, "account": "main", "restarted": restarted},
+          "Claude is signed in through its own login. Agent Deck keeps no copy of it."
+          + (" Agent Deck restarted." if restarted else ""))
+    return 0
+
+
+def _env_line(text: str, name: str, value: str) -> str:
+    kept = [l for l in text.splitlines() if not l.startswith(name + "=")]
+    return "\n".join(kept + [f"{name}={value}"]) + "\n"
+
+
+def cmd_set_openai_key(ctl, args):
+    if args.file:
+        try:
+            key = Path(args.file).read_text(encoding="utf-8")
+        except OSError as exc:
+            raise Refuse(f"Cannot read {args.file} ({exc.strerror}).") from None
+    else:
+        key = ctl.secret("Paste your OpenAI API key: ")
+    key = "".join(key.split())
+    if not key:
+        raise Refuse("No key was given. Run  sudo deckctl set-openai-key  and paste it.")
+    status = ctl.http_status(OPENAI_MODELS, {"Authorization": f"Bearer {key}"})
+    if status in (401, 403):
+        raise Refuse("OpenAI rejected that key. Nothing was changed; check it at "
+                     "platform.openai.com and try again.")
+    if status != 200:
+        raise Refuse("Could not reach OpenAI to check the key, so nothing was changed. "
+                     "Check this machine's internet and try again.")
+    current = ctl.env_file.read_text(encoding="utf-8") if ctl.env_file.exists() else ""
+    atomic.write_text(ctl.env_file, _env_line(current, "OPENAI_API_KEY", key), mode=0o600)
+    code, out = ctl.run(["systemctl", "restart", UNIT], 60)
+    if code != 0:
+        raise Refuse(f"The key is saved but Agent Deck did not restart: {out[:200]}.")
+    _emit(ctl, args, {"ok": True}, "OpenAI key saved and checked. Agent Deck restarted.")
+    return 0
+
+
+def _doctor_state(cfg):
+    path = Path(cfg.deck.state_dir) / "doctor-state.json"
+    try:
+        data = json.loads(path.read_text())
+        return path, data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return path, {}
+
+
+def cmd_doctor(ctl, args):
+    cfg = ctl.config()
+    path, state = _doctor_state(cfg)
+    checks = doctor_checks.run_checks(cfg, ctl.host_factory(cfg), state)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        atomic.write_text(path, json.dumps(state), mode=0o600)
+    except OSError:
+        pass  # the cache is a convenience; a read-only disk must not hide the answers
+    bad = [c for c in checks if not c.ok]
+    if args.json:
+        ctl.say(json.dumps([c._asdict() for c in checks], indent=1))
+    else:
+        ctl.say(doctor_checks.render(checks))
+    return 1 if bad else 0
+
+
+def cmd_config(ctl, args):
+    if args.action == "get":
+        try:
+            value = ctl.config().get(args.key)
+        except KeyError:
+            raise Refuse(f"{args.key} is not a setting.", 2) from None
+        ctl.say(_show(value))
+        return 0
+    if args.value is None:
+        raise Refuse("Give the new value:  deckctl config set <key> <value>.", 2)
+    ctl.say(apply_config(ctl, args.key, args.value))
+    return 0
+
+
+def cmd_version(ctl, args):
+    cfg = ctl.config()
+    host = ctl.host_factory(cfg)
+    ours, latest = host.version(), host.latest_version()
+    data = {"version": ours, "latest": latest}
+    text = f"Agent Deck {ours}" + (f"  (latest release: {latest})" if latest else "")
+    _emit(ctl, args, data, text)
+    return 0
+
+
+def read_unit(text: str) -> dict:
+    """What the live unit says, as deck.toml sections. Refuses rather than guesses."""
+    def one(key):
+        found = re.findall(rf"^{key}=(.*)$", text, re.M)
+        return found[-1].strip() if found else ""
+    exec_start = one("ExecStart")
+    if not exec_start:
+        raise Refuse("The unit has no ExecStart line, so there is nothing to read the port "
+                     "and address from. Nothing was written.")
+    user = one("User") or "root"
+    venv = re.match(r"(\S+?)/\.venv/bin/python", exec_start)
+    app_dir = venv.group(1) if venv else one("WorkingDirectory")
+    host = re.search(r"--host\s+(\S+)", exec_start)
+    port = re.search(r"--port\s+(\d+)", exec_start)
+    oauth = next((l.lstrip("-").strip() for l in re.findall(r"^EnvironmentFile=(.*)$", text, re.M)
+                  if l.strip().lstrip("-").endswith("oauth.env")), "")
+    home = oauth[:-len("/.claude/oauth.env")] if oauth.endswith("/.claude/oauth.env") \
+        else f"/home/{user}"
+    deck = {"user": user, "home": home, "app_dir": app_dir or "/opt/agent-deck",
+            "bind": host.group(1) if host else "127.0.0.1",
+            "port": int(port.group(1)) if port else 8000, "install_source": "rsync"}
+    return {"deck": deck, "claude": {"oauth_env": oauth or f"{home}/.claude/oauth.env"}}
+
+
+def _toml_of(sections: dict) -> str:
+    val = json.dumps  # str, bool and int all spell the same in TOML
+    out = ["# Written by `deckctl migrate` from the live agentdeck.service.", ""]
+    for name, table in sections.items():
+        out.append(f"[{name}]")
+        out += [f"{k} = {val(v)}" for k, v in table.items()]
+        out.append("")
+    return "\n".join(out)
+
+
+CANNOT_INFER = {
+    "deck.reserved_ports": "ports other services on this machine already own",
+    "doctor.public_probe_urls": "public addresses the alarm should check from outside",
+}
+
+
+def cmd_migrate(ctl, args):
+    if ctl.config_path.exists():
+        ctl.say(f"{ctl.config_path} already exists, so nothing was changed.")
+        return 0
+    if not ctl.unit_path.exists():
+        raise Refuse("There is no Agent Deck service on this machine to migrate from. "
+                     "Run the installer instead.")
+    sections = read_unit(ctl.unit_path.read_text(encoding="utf-8"))
+    bind = sections["deck"]["bind"]
+    wg = ctl.wg_addresses()
+    if bind in wg:
+        net = {"mode": "wireguard", "tls": "none", "wireguard_iface": wg[bind]}
+    else:
+        net = {"mode": "local", "tls": "none"}
+    sections = {"deck": sections["deck"], "network": net,
+                "desks": {"docker": bool(ctl.host_factory(deckconfig.DeckConfig()).have("docker"))},
+                "claude": sections["claude"]}
+    text = _toml_of(sections)
+    probe = ctl.config_path.with_name(ctl.config_path.name + ".migrate")
+    try:
+        probe.parent.mkdir(parents=True, exist_ok=True)
+        probe.write_text(text, encoding="utf-8")
+        try:
+            deckconfig.load(probe, env={})
+        except deckconfig.ConfigError as exc:
+            raise Refuse(f"The unit describes a setup Agent Deck cannot run as configured: {exc}") from None
+    finally:
+        probe.unlink(missing_ok=True)
+    if args.json:
+        ctl.say(json.dumps({**sections, "cannot_infer": CANNOT_INFER}, indent=1))
+    elif args.dry_run:
+        ctl.say(text)
+    if not args.dry_run:
+        atomic.write_text(ctl.config_path, text, mode=0o644)
+        if not args.json:
+            ctl.say(f"Wrote {ctl.config_path} from {ctl.unit_path}.")
+    if not args.json:
+        ctl.say("Two things a unit cannot tell me; set them if they apply:")
+        for key, why in CANNOT_INFER.items():
+            ctl.say(f"  sudo deckctl config set {key} <value>   # {why}")
+    return 0
+
+
+# -- update and rollback (K8) --------------------------------------------------
+
+HEALTH_SECONDS = 60
+POLL_SECONDS = 2
+
+
+def _vkey(name: str):
+    m = re.match(r"^(\d+)\.(\d+)\.(\d+)", name)
+    return tuple(int(x) for x in m.groups()) if m else None
+
+
+def _unpack(blob: bytes, dest: Path) -> None:
+    """Unpack a release tarball into `dest`, refusing anything that would land outside it."""
+    import io
+    dest.mkdir(parents=True)
+    with tarfile.open(fileobj=io.BytesIO(blob), mode="r:gz") as tf:
+        members = tf.getmembers()
+        for m in members:
+            parts = Path(m.name).parts
+            if Path(m.name).is_absolute() or ".." in parts or not (m.isfile() or m.isdir()):
+                raise Refuse("The download contains files outside its own folder, so it was "
+                             "not unpacked. Nothing was changed.")
+        tops = {Path(m.name).parts[0] for m in members if Path(m.name).parts}
+        strip = 1 if len(tops) == 1 and all(len(Path(m.name).parts) > 1 or m.isdir()
+                                            for m in members) else 0
+        for m in members:
+            rel = Path(*Path(m.name).parts[strip:]) if len(Path(m.name).parts) > strip else None
+            if rel is None:
+                continue
+            target = dest / rel
+            if m.isdir():
+                target.mkdir(parents=True, exist_ok=True)
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(tf.extractfile(m).read())
+            target.chmod(m.mode & 0o755 | 0o600)
+
+
+def _repoint(link: Path, release: Path) -> None:
+    tmp = link.with_name(link.name + ".new")
+    tmp.unlink(missing_ok=True)
+    os.symlink(release, tmp)
+    os.replace(tmp, link)            # one rename: `current` never does not exist
+
+
+def _wait_healthy(ctl, cfg):
+    host = ctl.host_factory(cfg)
+    start = ctl.clock()
+    while True:
+        bad = [c for c in doctor_checks.core_checks(cfg, host) if not c.ok]
+        if not bad:
+            return []
+        if ctl.clock() - start >= HEALTH_SECONDS:
+            return bad
+        ctl.sleep(POLL_SECONDS)
+
+
+def _switch(ctl, cfg, link: Path, new: Path, old: Path):
+    """Point `link` at `new`, restart, prove it. On failure put `old` back. -> failed checks."""
+    _repoint(link, new)
+    ctl.run(["systemctl", "restart", UNIT], 60)
+    bad = _wait_healthy(ctl, cfg)
+    if bad:
+        _repoint(link, old)
+        ctl.run(["systemctl", "restart", UNIT], 60)
+    return bad
+
+
+def _prune(releases: Path, keep: set) -> None:
+    for d in releases.iterdir():
+        if d.is_dir() and _vkey(d.name) and d.name not in keep:
+            shutil.rmtree(d, ignore_errors=True)
+
+
+def _what_failed(bad) -> str:
+    return " ".join(f"{c.says}" for c in bad)
+
+
+def _install(ctl, cfg, manifest, releases: Path) -> Path:
+    """Download, verify, unpack, build and render a release. Nothing live changes here."""
+    version, server = str(manifest["version"]), manifest.get("server") or {}
+    try:
+        blob = ctl.fetch(server["url"])
+    except (OSError, KeyError):
+        raise Refuse("The download failed, so nothing was changed. Try again in a minute.") from None
+    if hashlib.sha256(blob).hexdigest() != str(server.get("sha256", "")).lower():
+        raise Refuse("The download is damaged (its checksum does not match the release "
+                     "manifest), so nothing was changed. Try again; if it keeps happening, "
+                     "tell whoever publishes the releases.")
+    new, stage = releases / version, releases / f".unpack-{version}"
+    shutil.rmtree(stage, ignore_errors=True)
+    shutil.rmtree(new, ignore_errors=True)
+    try:
+        _unpack(blob, stage)
+        os.replace(stage, new)
+        steps = [["python3", "-m", "venv", str(new / ".venv")]]
+        if (new / "requirements.txt").exists():
+            steps.append([str(new / ".venv" / "bin" / "pip"), "install", "-q", "-r",
+                          str(new / "requirements.txt")])
+        if (new / "deploy" / "render.py").exists():
+            steps.append([sys.executable, str(new / "deploy" / "render.py"),
+                          "--config", str(ctl.config_path)])
+        for argv in steps:
+            code, out = ctl.run(argv, 900)
+            if code != 0:
+                raise Refuse(f"Preparing Agent Deck {version} failed ({out[:200]}), so nothing "
+                             "was changed.")
+    except BaseException:
+        shutil.rmtree(stage, ignore_errors=True)
+        shutil.rmtree(new, ignore_errors=True)
+        raise
+    return new
+
+
+def cmd_update(ctl, args):
+    cfg = ctl.config()
+    if cfg.deck.install_source == "rsync":
+        raise Refuse("This box is deployed from source; use the deploy procedure.")
+    base = cfg.update.base_url.rstrip("/")
+    if not base:
+        raise Refuse("No release channel is set. Run  sudo deckctl config set update.base_url <address>.")
+    link = Path(cfg.deck.app_dir)
+    releases = link.parent / "releases"
+    if not link.is_symlink():
+        raise Refuse(f"{link} is a plain folder, not a link into {releases}/, so it cannot be "
+                     "switched safely. Run the installer to convert it.")
+    ours = ctl.host_factory(cfg).version()
+    old, target, fresh = Path(os.path.realpath(link)), args.to, False
+    if target and (releases / target).is_dir() and not args.check:
+        new = releases / target                      # going back: nothing to download
+    else:
+        try:
+            manifest = json.loads(ctl.fetch(base + "/manifest.json"))
+            latest = str(manifest["version"])
+        except (OSError, ValueError, KeyError):
+            raise Refuse(f"Could not read the release channel at {base}, so nothing was changed. "
+                         "Check this machine's internet and update.base_url.") from None
+        available = doctor_checks.newer(latest, ours)
+        if args.check:
+            note = f"\n{manifest['notes']}" if available and manifest.get("notes") else ""
+            _emit(ctl, args, {"current": ours, "latest": latest, "available": available,
+                              "notes": manifest.get("notes", "")},
+                  (f"Agent Deck {latest} is available; you have {ours}. Run  sudo deckctl update."
+                   if available else f"Agent Deck {ours} is up to date.") + note)
+            return 0
+        if target and target != latest:
+            raise Refuse(f"Version {target} is neither installed here nor published on the "
+                         f"release channel (which has {latest}).")
+        if not target and not available:
+            ctl.say(f"Agent Deck {ours} is up to date.")
+            return 0
+        new, fresh = _install(ctl, cfg, manifest, releases), True
+    bad = _switch(ctl, cfg, link, new, old)
+    if bad:
+        if fresh:
+            shutil.rmtree(new, ignore_errors=True)   # so a retry downloads afresh
+        raise Refuse(f"Agent Deck {new.name} did not come up: {_what_failed(bad)} "
+                     f"I rolled back to {old.name}. Run  sudo deckctl doctor  for the details.")
+    _prune(releases, {new.name, old.name})
+    _emit(ctl, args, {"updated": True, "from": old.name, "to": new.name},
+          f"Updated Agent Deck {old.name} -> {new.name}. The old version is kept; to go back "
+          f"run  sudo deckctl update --to {old.name}.")
+    return 0
+
+
+# -- uninstall ---------------------------------------------------------------
+
+OUR_UNITS = ("agentdeck.service", "deckdoctor.service", "deckdoctor.timer")
+
+
+def _safe_dir(path: str, what: str) -> Path:
+    p = Path(path)
+    if len(p.parts) < 3:
+        raise Refuse(f"{what} is set to {path}, which is too broad to delete. "
+                     "Nothing was removed.")
+    return p
+
+
+def cmd_uninstall(ctl, args):
+    cfg = ctl.config()
+    if cfg.deck.install_source == "rsync":
+        raise Refuse("This box is deployed from source; remove it by hand, deckctl will not "
+                     "uninstall a box it did not install.")
+    if args.purge:
+        state, home = _safe_dir(cfg.deck.state_dir, "deck.state_dir"), _safe_dir(cfg.deck.home, "deck.home")
+        expected = cfg.network.hostname or cfg.deck.user
+        if ctl.prompt(f"This deletes all data, desks and the {cfg.deck.user} user. "
+                      f"Type the hostname ({expected}) to go ahead: ").strip() != expected:
+            raise Refuse(f"That was not the hostname ({expected}), so nothing was removed.")
+    elif not args.yes and not args.json:
+        if ctl.prompt("Remove Agent Deck from this machine? Your data is kept. [y/N] ") \
+                .strip().lower() not in ("y", "yes"):
+            raise Refuse("Nothing was removed.")
+    for unit in ("agentdeck", "deckdoctor.timer"):
+        ctl.run(["systemctl", "disable", "--now", unit], 60)
+    for path in [*(ctl.system_dir / n for n in OUR_UNITS), ctl.logrotate_path,
+                 ctl.caddy_site, ctl.bin_path]:
+        path.unlink(missing_ok=True)
+    ctl.run(["systemctl", "daemon-reload"], 30)
+    ctl.run(["systemctl", "reload", "caddy"], 30)
+    ctl.run(["ufw", "delete", "allow", "443/tcp"], 30)
+    done = ["the services", "the Caddy site", "the firewall rule", "deckctl itself"]
+    if args.purge:
+        if cfg.desks.docker:
+            code, ids = ctl.run(["docker", "ps", "-aq", "--filter", f"ancestor={cfg.desks.image}"], 30)
+            if ids.split():
+                ctl.run(["docker", "rm", "-f", *ids.split()], 120)
+            ctl.run(["docker", "rmi", cfg.desks.image], 120)
+        shutil.rmtree(state, ignore_errors=True)
+        shutil.rmtree(home, ignore_errors=True)
+        shutil.rmtree(ctl.config_path.parent, ignore_errors=True)
+        ctl.run(["userdel", cfg.deck.user], 30)
+        done += ["all data", "the desks", f"the {cfg.deck.user} user", "the settings"]
+    else:
+        done.append("(your data and settings are kept)")
+    _emit(ctl, args, {"removed": done}, "Removed " + ", ".join(done) + ".")
+    return 0
+
+
+# -- argument parsing --------------------------------------------------------
+
+
+class _Parser(argparse.ArgumentParser):
+    def error(self, message):
+        raise Refuse(f"{message}. Run deckctl --help.", 2)
+
+
+def build_parser():
+    p = _Parser(prog="deckctl", description="Admin command for an Agent Deck server.")
+    sub = p.add_subparsers(dest="cmd", parser_class=_Parser)
+
+    def add(name, fn, help_):
+        sp = sub.add_parser(name, help=help_)
+        sp.add_argument("--json", action="store_true", help="machine-readable output")
+        sp.set_defaults(fn=fn)
+        return sp
+
+    add("status", cmd_status, "one screen of how the deck is doing")
+    add("pair", cmd_pair, "mint a one-time pairing code").add_argument("--name")
+    add("devices", cmd_devices, "list paired devices")
+    add("revoke", cmd_revoke, "remove a device").add_argument("id")
+    lp = add("login", cmd_login, "sign Claude in for the service user (or --account ID)")
+    lp.add_argument("--token-file")
+    lp.add_argument("--account")
+    lp.add_argument("--label")
+    lp.add_argument("--console", action="store_true", help="an API (Console) account")
+    add("accounts", cmd_accounts, "the Claude accounts desks can run under")
+    add("set-openai-key", cmd_set_openai_key, "store and check an OpenAI key").add_argument("--file")
+    add("doctor", cmd_doctor, "check everything and say what to fix")
+    cp = add("config", cmd_config, "read or change deck.toml")
+    cp.add_argument("action", choices=["get", "set"])
+    cp.add_argument("key")
+    cp.add_argument("value", nargs="?")
+    add("version", cmd_version, "this server's version")
+    up = add("update", cmd_update, "install the latest release (or --to a version)")
+    up.add_argument("--check", action="store_true")
+    up.add_argument("--to")
+    un = add("uninstall", cmd_uninstall, "remove Agent Deck (keeps your data unless --purge)")
+    un.add_argument("--purge", action="store_true")
+    un.add_argument("--yes", action="store_true")
+    add("migrate", cmd_migrate, "write deck.toml from the live unit") \
+        .add_argument("--dry-run", action="store_true")
+    return p
+
+
+def main(argv=None, ctl: Ctl | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    ctl = ctl or Ctl(config_path=os.environ.get("DECK_CONFIG") or deckconfig.DEFAULT_PATH)
+    try:
+        if argv and argv[0] not in ("-h", "--help") and ctl.euid != 0:
+            ctl.warn("deckctl reads the deck's private settings, which need root, "
+                     "so it is running again with sudo.")
+            return ctl.exec_sudo(["sudo", sys.executable, os.path.abspath(__file__), *argv]) or 0
+        args = build_parser().parse_args(argv)
+        if not getattr(args, "fn", None):
+            raise Refuse("Say what to do, for example  deckctl status.", 2)
+        return args.fn(ctl, args)
+    except Refuse as exc:
+        ctl.warn(str(exc))
+        return exc.code
+    except SystemExit as exc:  # argparse --help
+        return int(exc.code or 0)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

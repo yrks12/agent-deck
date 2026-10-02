@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<!-- The desk computer's window manager: one taskbar at the bottom with a
+     Terminal button, the open windows, and a clock. Nothing else. -->
+<JWM>
+  <Tray x="0" y="-1" height="28" autohide="off">
+    <TrayButton label="Terminal">exec:xterm -title Terminal -class DeckTerm -fa 'Liberation Mono' -fs 10 -bg '#1e1e1e' -fg '#d4d4d4' -sl 5000 -e tmux attach -t deck</TrayButton>
+    <TrayButton label="Agent">exec:xterm -title "Agent's commands" -class DeckAgent -fa 'Liberation Mono' -fs 10 -bg '#10141a' -fg '#c8d3e0' -e tmux attach -f read-only -t agent</TrayButton>
+    <Spacer width="6"/>
+    <TaskList maxwidth="260"/>
+    <Clock format="%H:%M"/>
+  </Tray>
+  <WindowStyle>
+    <Font>Liberation Sans-9:bold</Font>
+    <Width>3</Width>
+    <Height>22</Height>
+    <Corner>3</Corner>
+    <Foreground>#c8c8c8</Foreground>
+    <Background>#3a3f47</Background>
+    <Outline>#202328</Outline>
+    <Active>
+      <Foreground>#ffffff</Foreground>
+      <Background>#2f6fd1</Background>
+      <Outline>#1c4a94</Outline>
+    </Active>
+  </WindowStyle>
+  <TrayStyle>
+    <Font>Liberation Sans-9</Font>
+    <Background>#23262b</Background>
+    <Foreground>#e6e6e6</Foreground>
+  </TrayStyle>
+  <TaskListStyle>
+    <Font>Liberation Sans-9</Font>
+    <Foreground>#dddddd</Foreground>
+    <Background>#30343a</Background>
+    <Active>
+      <Foreground>#ffffff</Foreground>
+      <Background>#2f6fd1</Background>
+    </Active>
+  </TaskListStyle>
+  <RootMenu onroot="">
+  </RootMenu>
+  <Desktops width="1" height="1">
+    <Background type="solid">#1b2430</Background>
+  </Desktops>
+  <FocusModel>click</FocusModel>
+  <SnapMode distance="10">border</SnapMode>
+  <MoveMode>opaque</MoveMode>
+  <ResizeMode>opaque</ResizeMode>
+</JWM>

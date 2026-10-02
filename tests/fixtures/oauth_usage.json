@@ -1,0 +1,28 @@
+{
+  "five_hour": {"utilization": 8.0, "resets_at": "2026-10-01T00:19:59.983561+00:00"},
+  "seven_day": {"utilization": 41.0, "resets_at": "2026-10-06T21:59:59.983577+00:00"},
+  "seven_day_opus": null,
+  "seven_day_sonnet": null,
+  "extra_usage": {"is_enabled": false, "monthly_limit": null, "used_credits": null,
+                  "user_disabled": true, "spend_limit_reached": false},
+  "limits": [
+    {"kind": "session", "group": "session", "percent": 8, "severity": "normal",
+     "resets_at": "2026-10-01T00:19:59.983561+00:00", "scope": null, "is_active": false},
+    {"kind": "weekly_all", "group": "weekly", "percent": 41, "severity": "warning",
+     "resets_at": "2026-10-06T21:59:59.983577+00:00", "scope": null, "is_active": true},
+    {"kind": "weekly_scoped", "group": "weekly", "percent": 3, "severity": "normal",
+     "resets_at": "2026-10-06T22:00:00+00:00",
+     "scope": {"model": {"id": null, "display_name": "Fable"}, "surface": null},
+     "is_active": false},
+    {"kind": "something_new", "group": "x", "percent": 99, "severity": "critical",
+     "resets_at": null, "scope": null, "is_active": false}
+  ],
+  "seven_day_breakdown": {
+    "as_of": "2026-09-30T20:21:09.083345+00:00",
+    "window_started_at": "2026-09-29T21:59:59.986804+00:00",
+    "rows": [
+      {"key": "claude_code", "display_name": "Claude Code", "percent": 37},
+      {"key": "chat", "display_name": "Chats", "percent": 0}
+    ]
+  }
+}

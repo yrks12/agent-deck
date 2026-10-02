@@ -1,0 +1,651 @@
+#!/usr/bin/env python3
+"""deckdoctor -- is the box about to die? Says so BEFORE it does. (H1, contract K8)
+
+Runs on the always-on box every ten minutes (deploy/deckdoctor.timer). Prints ONE
+JSON line and exits 0 when green, 1 when red:
+
+  {"ok": bool, "checks": {"auth": .., "disk_pct": .., "daemon": .., "stuck_messages": ..,
+   "desks_asleep": ..}, "alert": {"cos": .., "whatsapp": ..}}
+
+Red is spoken ONCE per check per six hours: one line into the chief's thread as
+sender "deck", and one WhatsApp if a bridge is reachable from this machine. A check
+that recovers forgets, so its next failure speaks again.
+
+It only ever reads, except for its own state file and that one alert. It never
+stops, restarts or deletes anything -- what is filling a disk is usually somebody's
+data, and the alarm's job is to say so, not to decide.
+
+Configuration is environment only (no secrets in argv or in the unit):
+  DISK_RED_PCT          red at or above this many percent used (default 85)
+  DECKDOCTOR_DISK_PATH  filesystem to measure (default /)
+  DECK_URL              the deck (default: read from deck.toml -- [deck] bind/port)
+  DECK_CONFIG           deck.toml to read (default /etc/agent-deck/deck.toml)
+  AGENT_DECK_TOKEN      bearer for /v1/agents; else the bus's deck-token.txt. Never printed.
+  DECKDOCTOR_ALERT      send (default) | off | file:<path>  -- the last two are DRY RUNS
+  DECKDOCTOR_STATE      dedupe/probe state (default <bus>/deckdoctor-state.json)
+  DECKDOCTOR_AUTH_PROBE 1 (default) spends one tiny `claude -p` per 6 h; 0 disables it
+  DECK_ROOT             the deck checkout, for server.office / server.notify
+"""
+from __future__ import annotations
+
+import json
+import math
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+import urllib.request
+from pathlib import Path
+
+ROOT = Path(os.environ.get("DECK_ROOT") or Path(__file__).resolve().parent.parent)
+HOUR = 3600.0
+
+# Who counts as "the owner's side" when asking whether a message got through.
+# Mirrors server.office.OWNER_SENDERS plus the engineer (contract K2).
+# The owner's own id comes from config (server/owner.py), read when asked.
+OWNER_SIDE_FIXED = frozenset({"owner", "routine", "deck", "engineer"})
+
+
+def owner_side() -> frozenset:
+    try:
+        _import_deck()
+        from server import owner
+        return OWNER_SIDE_FIXED | {owner.handle()}
+    except Exception:
+        return OWNER_SIDE_FIXED
+
+# What to do, one clause each. Deliberately free of anything a check's own name
+# would give away: an alert about the daemon must not read like one about disk.
+RUNBOOK = {
+    "disk_pct": "Nothing under /opt/studio is ours to delete or stop -- tell whoever runs "
+                "this box who is writing (du -xh / --max-depth=2) and let them decide.",
+    "auth": "The Claude login is dead, so every desk dies on start: run "
+            "`sudo deckctl login` and follow the link.",
+    "daemon": "Check `systemctl status agentdeck` and `journalctl -u agentdeck -n 50`.",
+    "stuck_messages": "Owner messages are not being read: wake or restart the desks "
+                      "named in the deck's delivery notes.",
+    "memory": "Too many desk browsers for this box's RAM: the reaper stops idle ones "
+              "(DECK_BROWSER_IDLE_MINUTES, DECK_BROWSER_MAX_LIVE); lower the cap, or "
+              "`docker stats` and stop the biggest idle deck-desk-* container.",
+    "renders": "deck.toml no longer renders this box's units, so the next install-deck.sh "
+               "run will fail: fix the key named above in /etc/agent-deck/deck.toml "
+               "(back it up first) and check with deploy/render.py render.",
+    "code_tree": "Somebody changed the code on this box by hand (an older rsync is a silent "
+                 "rollback): redeploy the newest main with bin/deploy-box, never by hand.",
+    "logins": "The CLI's own login cannot be renewed by anything but a person: run the "
+              "command above on the box and open the link it prints.",
+}
+
+#: Red this many days before a Claude login's refresh token runs out. MEASURED
+#: on the box: main's runs out 2026-10-26; after that no daemon can refresh it.
+LOGIN_WARN_DAYS = 3.0
+DAY = 86400.0
+
+
+# -- seams: the real ones. Tests replace every one of these ------------------
+
+
+def _memory(bus: Path):
+    """(MemAvailable / MemTotal or None, since when the deck saw it low or None)."""
+    fraction = None
+    try:
+        fields = {}
+        for line in Path("/proc/meminfo").read_text().splitlines():
+            key, _, rest = line.partition(":")
+            fields[key.strip()] = float(rest.split()[0])
+        fraction = fields["MemAvailable"] / fields["MemTotal"]
+    except (OSError, ValueError, KeyError, IndexError, ZeroDivisionError):
+        pass
+    since = None
+    try:
+        value = json.loads((bus / "memory.json").read_text()).get("low_since")
+        since = None if value is None else float(value)
+    except (OSError, ValueError, AttributeError, TypeError):
+        pass
+    return fraction, since
+
+
+def _disk(path: str) -> int:
+    """Percent used, the way `df` prints it (used / (used + available), rounded up)."""
+    usage = shutil.disk_usage(path)
+    return math.ceil(100 * usage.used / (usage.used + usage.free))
+
+
+def _run(argv: list[str], timeout: float) -> tuple[int, str]:
+    try:
+        done = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+    except FileNotFoundError:
+        return 127, f"{argv[0]}: not found"
+    except subprocess.TimeoutExpired:
+        return 124, f"timed out after {timeout:.0f}s"
+    return done.returncode, ((done.stdout or "") + (done.stderr or "")).strip()
+
+
+def _fetch(url: str, token: str):
+    req = urllib.request.Request(url)
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
+    with urllib.request.urlopen(req, timeout=8) as resp:
+        body = resp.read().decode("utf-8", "replace")
+    try:
+        return json.loads(body)
+    except ValueError:
+        return {}
+
+
+def _import_deck():
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+
+
+def _renders(root: Path, config_path: str):
+    """deploy/render.py render into a scratch dir: (ok, one line). Reads only."""
+    def check():
+        path = Path(config_path)
+        if not path.is_file():
+            return True, f"no {path}; nothing to render"
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix="deckdoctor-render-") as out:
+            try:
+                r = subprocess.run([sys.executable, str(Path(root) / "deploy" / "render.py"),
+                                    "render", "--config", str(path), "--out", out],
+                                   capture_output=True, text=True, timeout=30)
+            except Exception as err:
+                return False, f"render.py did not run: {err}"
+            if r.returncode != 0:
+                said = (r.stderr or r.stdout).strip().splitlines()
+                return False, said[-1] if said else f"render.py exited {r.returncode}"
+        return True, f"{path} renders the units"
+    return check
+
+
+def _code_tree(root: Path):
+    """deploy_guard.check on the code root, loaded by path (stdlib, never raises)."""
+    def check():
+        try:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(
+                "deck_deploy_guard", str(Path(root) / "server" / "deploy_guard.py"))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod.check(root)
+        except Exception as err:
+            return True, f"no deploy guard here ({type(err).__name__}); DEPLOYED not checked"
+    return check
+
+
+def _post(to: str, text: str) -> None:
+    _import_deck()
+    from server import office
+    result = office.send(to, text, sender="deck", extra={"doctor": True})
+    if not result.get("ok"):
+        raise OSError(result.get("detail") or "office.send refused")
+
+
+def _whatsapp(text: str) -> str:
+    _import_deck()
+    from server import notify
+    sent = notify.send(text)
+    return "sent" if sent.ok else f"skipped: {sent.detail}"
+
+
+def _token(env: dict) -> str:
+    if env.get("AGENT_DECK_TOKEN"):
+        return env["AGENT_DECK_TOKEN"].strip()
+    home = Path(env.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+    try:
+        return (home / "agent-bus" / "deck-token.txt").read_text().strip()
+    except OSError:
+        return ""
+
+
+def _deck_url_from_config(env: dict) -> str:
+    """Where the deck listens, per deck.toml. Never a guess about someone's network:
+    no file (or an unreadable one) means the deck's own default, loopback:7789."""
+    bind, port = "127.0.0.1", 7789
+    try:
+        _import_deck()
+        from server import deckconfig
+        cfg = deckconfig.load(env.get("DECK_CONFIG") or None, env=env)
+        bind, port = cfg.deck.bind, cfg.deck.port
+    except Exception:
+        pass  # the alarm must still ask the default address, not die on a bad file
+    if bind in ("0.0.0.0", "::", ""):
+        bind = "127.0.0.1"
+    host = f"[{bind}]" if ":" in bind else bind
+    return f"http://{host}:{port}"
+
+
+def config(env: dict | None = None) -> dict:
+    env = dict(os.environ if env is None else env)
+    home = Path(env.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+    bus = home / "agent-bus"
+    return {
+        "disk_red_pct": float(env.get("DISK_RED_PCT") or 85),
+        "disk_path": env.get("DECKDOCTOR_DISK_PATH") or "/",
+        "deck_url": (env.get("DECK_URL") or _deck_url_from_config(env)).rstrip("/"),
+        "token": _token(env),
+        "messages": bus / "messages.jsonl",
+        "roster": bus / "roster.json",
+        "state": Path(env.get("DECKDOCTOR_STATE") or bus / "deckdoctor-state.json"),
+        "alert": env.get("DECKDOCTOR_ALERT") or "send",
+        "auth_probe": (env.get("DECKDOCTOR_AUTH_PROBE") or "1") != "0",
+        "claude": env.get("CLAUDE_BIN") or "claude",
+        "stuck_seconds": 300.0,
+        "stuck_lookback": 24 * HOUR,
+        "dedupe_seconds": 6 * HOUR,
+        "disk": _disk, "run": _run, "fetch": _fetch, "post": _post,
+        "whatsapp": _whatsapp, "now": time.time,
+        "code_tree": _code_tree(Path(env.get("DECK_ROOT") or ROOT)),
+        "renders": _renders(Path(env.get("DECK_ROOT") or ROOT),
+                            env.get("DECK_CONFIG") or "/etc/agent-deck/deck.toml"),
+        "memory": lambda: _memory(bus),
+        "logins": lambda: _logins(home),
+        "kernel_log": _kernel_log,
+    }
+
+
+# -- state -------------------------------------------------------------------
+
+
+def _load_state(path: Path) -> dict:
+    try:
+        state = json.loads(path.read_text())
+        return state if isinstance(state, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_state(path: Path, state: dict) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(json.dumps(state))
+        os.replace(tmp, path)
+    except OSError:
+        pass  # a full disk is exactly when this runs; the alarm must still speak
+
+
+def _short(text: str, limit: int = 120) -> str:
+    line = " ".join(str(text).split())
+    return line if len(line) <= limit else line[: limit - 1] + "…"
+
+
+# -- the checks: each returns {"ok": bool, ...} and never raises -------------
+
+
+def check_disk(cfg: dict) -> dict:
+    try:
+        pct = cfg["disk"](cfg["disk_path"])
+    except Exception as err:
+        return {"ok": False, "value": None, "detail": _short(f"cannot measure: {err}")}
+    return {"ok": pct < cfg["disk_red_pct"], "value": pct, "limit": cfg["disk_red_pct"]}
+
+
+def check_auth(cfg: dict, state: dict) -> dict:
+    claude = cfg["claude"]
+    code, out = cfg["run"]([claude, "auth", "status"], 30)
+    try:
+        logged_in = bool(json.loads(out).get("loggedIn"))
+    except (ValueError, AttributeError):
+        return {"ok": False, "detail": _short(f"auth status unreadable (exit {code}): {out}")}
+    if not logged_in:
+        return {"ok": False, "detail": "claude auth status: not logged in"}
+    if not cfg["auth_probe"]:
+        return {"ok": True, "detail": "logged in (probe off)"}
+    now = cfg["now"]()
+    probe = state.get("probe") or {}
+    if probe.get("ok") and now - float(probe.get("ts") or 0) < cfg["dedupe_seconds"]:
+        return {"ok": True, "detail": "logged in; live probe ok"}
+    # `auth status` proves a credential is on disk, not that it still works. An
+    # expired OAuth token reports loggedIn:true while every session dies.
+    code, out = cfg["run"]([claude, "-p", "reply with the single word ok"], 90)
+    state["probe"] = {"ts": now, "ok": code == 0}
+    if code != 0:
+        return {"ok": False, "detail": _short(f"live probe failed (exit {code}): {out}")}
+    return {"ok": True, "detail": "logged in; live probe ok"}
+
+
+def _logins(home: Path) -> list[dict]:
+    """Every Claude account: `main` (this home) and the registered ones, each
+    with ONLY its `refreshTokenExpiresAt` (seconds) and the desks on it. No
+    token is read into anything that is kept or printed."""
+    bus = home / "agent-bus"
+    try:
+        rows = json.loads((bus / "accounts.json").read_text())
+    except (OSError, ValueError):
+        rows = []
+    found = [("main", home)] + [
+        (str(r["id"]), Path(str(r["config_dir"]))) for r in rows if isinstance(rows, list)
+        and isinstance(r, dict) and r.get("id") and r.get("config_dir")]
+    desks: dict[str, list[str]] = {}
+    try:
+        for d in json.loads((bus / "roster.json").read_text()).get("agents") or []:
+            if isinstance(d, dict) and d.get("engine", "claude") == "claude":
+                desks.setdefault(str(d.get("account") or "main"), []).append(str(d["name"]))
+    except (OSError, ValueError, KeyError, AttributeError):
+        pass
+    out = []
+    for ident, folder in found:
+        try:
+            oauth = json.loads((folder / ".credentials.json").read_text()).get("claudeAiOauth")
+            ms = oauth.get("refreshTokenExpiresAt") if isinstance(oauth, dict) else None
+        except (OSError, ValueError, AttributeError):
+            ms = None
+        out.append({"id": ident, "desks": desks.get(ident, []),
+                    "refresh_expires_at": ms / 1000.0 if isinstance(ms, (int, float)) else None})
+    return out
+
+
+def check_logins(cfg: dict) -> dict:
+    """Red at T-LOGIN_WARN_DAYS before any account's login runs out, and once
+    it has: naming the account, its desks and the one command that fixes it."""
+    seam = cfg.get("logins")
+    if seam is None:
+        return {"ok": True, "detail": "not checked"}
+    try:
+        logins = seam()
+    except Exception as err:  # an unreadable home is the daemon check's to report
+        return {"ok": True, "detail": _short(f"cannot read the logins: {err}")}
+    now, bad = cfg["now"](), []
+    deckctl = Path(os.environ.get("DECK_ROOT") or ROOT) / "bin" / "deckctl"
+    for login in logins:
+        expires = login.get("refresh_expires_at")
+        if expires is None:
+            continue
+        left = (expires - now) / DAY
+        if left >= LOGIN_WARN_DAYS:
+            continue
+        ident = login["id"]
+        cmd = f"sudo {deckctl} login" + ("" if ident == "main" else f" --account {ident}")
+        on = ", ".join(login.get("desks") or []) or "no desks"
+        when = time.strftime("%Y-%m-%d", time.gmtime(expires))
+        if left <= 0:
+            bad.append(f"Claude login '{ident}' expired {when}; {on} cannot start. Run: {cmd}")
+        else:
+            bad.append(f"Claude login '{ident}' runs out {when} ({left:.1f} days; {on}). "
+                       f"Run: {cmd}")
+    return {"ok": not bad, "detail": " | ".join(bad) or "every Claude login has 3+ days left"}
+
+
+def check_renders(cfg: dict) -> dict:
+    """deck.toml still renders the units (MEASURED 2026-10-01: it silently did not)."""
+    try:
+        ok, detail = cfg["renders"]()
+    except Exception as err:
+        return {"ok": True, "detail": _short(f"not checked: {err}")}
+    return {"ok": bool(ok), "detail": _short(detail, 240)}
+
+
+def check_code_tree(cfg: dict) -> dict:
+    """The code under the deck's root still matches DEPLOYED (server/deploy_guard.py)."""
+    try:
+        ok, detail = cfg["code_tree"]()
+    except Exception as err:
+        return {"ok": True, "detail": _short(f"not checked: {err}")}
+    return {"ok": bool(ok), "detail": _short(detail, 240)}
+
+
+def check_daemon(cfg: dict) -> dict:
+    try:
+        cfg["fetch"](cfg["deck_url"] + "/api/state", cfg["token"])
+    except Exception as err:
+        return {"ok": False, "detail": _short(f"deck unreachable: {type(err).__name__}")}
+    return {"ok": True}
+
+
+def _desk_names(roster: Path) -> tuple[set[str], str | None]:
+    try:
+        rows = json.loads(roster.read_text()).get("agents") or []
+    except (OSError, ValueError, AttributeError):
+        return set(), None
+    names = {str(r["name"]) for r in rows if isinstance(r, dict) and "name" in r}
+    roots = [str(r["name"]) for r in rows
+             if isinstance(r, dict) and r.get("name") and r.get("reports_to") is None]
+    reports = {n: sum(1 for r in rows if isinstance(r, dict) and r.get("reports_to") == n)
+               for n in roots}
+    # Several desks can have no boss (a stale hire, an engineer's probe). The
+    # chief is the root the most desks report to; a tie goes to the first listed.
+    chief = max(roots, key=lambda n: reports[n], default=None)
+    return names, chief
+
+
+def check_stuck(cfg: dict) -> dict:
+    now, names = cfg["now"](), _desk_names(cfg["roster"])[0]
+    acked, queued = set(), {}
+    try:
+        lines = Path(cfg["messages"]).read_text().splitlines()
+    except OSError:
+        return {"ok": True, "count": 0}
+    for line in lines:
+        try:
+            rec = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(rec, dict):
+            continue
+        if rec.get("ack"):
+            acked.add(rec["ack"])
+        elif rec.get("id"):
+            queued[rec["id"]] = rec
+    stuck = []
+    side = owner_side()
+    for mid, rec in queued.items():
+        age = now - float(rec.get("ts") or 0)
+        to = str(rec.get("to") or "")
+        # `notice`: a deck note queued WITHOUT a wake on purpose (Mac grant
+        # revoke, connector note) -- it rides the desk's next turn. Only the
+        # deck's own explicit mark excuses a message (owner ruling 2026-10-01).
+        if (mid in acked or rec.get("doctor") or to in ("", "owner")
+                or (rec.get("notice") is True and str(rec.get("from") or "") == "deck")
+                or str(rec.get("from") or "").lower() not in side
+                or (names and to not in names)
+                or age <= cfg["stuck_seconds"] or age > cfg["stuck_lookback"]):
+            continue
+        stuck.append(to)
+    out = {"ok": not stuck, "count": len(stuck)}
+    if stuck:
+        out["desks"] = sorted(set(stuck))
+    return out
+
+
+def check_asleep(cfg: dict) -> dict:
+    """Informational: a sleeping desk is not a fault (wake-on-message brings it back)."""
+    try:
+        rows = cfg["fetch"](cfg["deck_url"] + "/v1/agents", cfg["token"])
+    except Exception as err:
+        return {"ok": True, "count": None, "detail": _short(f"unavailable: {type(err).__name__}")}
+    if isinstance(rows, dict):
+        rows = rows.get("agents") or []
+    count = sum(1 for r in rows if isinstance(r, dict)
+                and str(r.get("state") or "").upper() in ("ASLEEP", "OFFLINE"))
+    return {"ok": True, "count": count}
+
+
+LOW_RAM = 0.10
+LOW_RAM_SECONDS = 300.0
+
+
+def check_memory(cfg: dict, state: dict) -> dict:
+    """Red when under 10% of RAM has been available for five minutes.
+
+    The deck's reaper records when it first saw RAM low (memory.json); the
+    doctor also remembers its own first low reading, because the daemon may
+    be the thing that is down."""
+    try:
+        fraction, since = cfg["memory"]()
+    except Exception as err:
+        return {"ok": True, "value": None, "detail": _short(f"cannot measure: {err}")}
+    if fraction is None:
+        return {"ok": True, "value": None}
+    now, pct = cfg["now"](), round(100 * fraction, 1)
+    if fraction >= LOW_RAM:
+        state.pop("mem_low_since", None)
+        return {"ok": True, "value": pct}
+    own = float(state.setdefault("mem_low_since", now))
+    lasted = now - (min(own, since) if since is not None else own)
+    return {"ok": lasted < LOW_RAM_SECONDS, "value": pct, "low_for": round(lasted)}
+
+
+# -- out-of-memory kills -------------------------------------------------------
+#
+# MEASURED on the box, 2026-10-01: 14 kernel OOM kills in six hours and nobody
+# told. Each NEW kill is said once, to the chief only -- never WhatsApp, which
+# a browser tab hitting its own container cap every half hour would turn to spam.
+
+OOM_FIRST_LOOKBACK = 600.0  # a first run reports the last ten minutes, not history
+_OOM_TRIGGER = re.compile(r"kernel: (.+?) invoked oom-killer")  # "ServiceWorker t"
+_OOM_SCOPE = re.compile(r"kernel: oom-kill:constraint=(\w+).*?task_memcg=([^,]+),task=")
+_OOM_KILLED = re.compile(r"^(\d+(?:\.\d+)?) .*?kernel: (Memory cgroup out of memory|Out of "
+                         r"memory): Killed process (\d+) \(([^)]*)\)")
+
+
+def _kernel_log(since: float) -> str:
+    code, out = _run(["journalctl", "-k", "-o", "short-unix", "--no-pager",
+                      "--since", f"@{int(since)}"], 30)
+    return out if code == 0 else ""
+
+
+def parse_oom(text: str) -> list[dict]:
+    """Every kill in `journalctl -k -o short-unix` text, with what asked for
+    the memory (`trigger`) and the cgroup it was taken from."""
+    kills, trigger, scope = [], "", ("", "")
+    for line in text.splitlines():
+        if m := _OOM_TRIGGER.search(line):
+            trigger = m.group(1)
+        elif m := _OOM_SCOPE.search(line):
+            scope = (m.group(1), m.group(2).rsplit("/", 1)[-1])
+        elif m := _OOM_KILLED.search(line):
+            kills.append({"ts": float(m.group(1)), "process": m.group(4),
+                          "pid": int(m.group(3)), "trigger": trigger,
+                          "box_wide": not m.group(2).startswith("Memory cgroup"),
+                          "cgroup": scope[1]})
+            trigger, scope = "", ("", "")
+    return kills
+
+
+def check_oom(cfg: dict, state: dict) -> dict:
+    now = cfg["now"]()
+    since = float(state.get("oom_seen") or now - OOM_FIRST_LOOKBACK)
+    try:
+        kills = [k for k in parse_oom(cfg.get("kernel_log", lambda s: "")(since))
+                 if k["ts"] > since]
+    except Exception as err:
+        return {"ok": True, "count": None, "detail": _short(f"cannot read: {err}")}
+    state["oom_seen"] = max([since] + [k["ts"] for k in kills])
+    # The alarm says each kill once; this is the rate, so a regression is a number.
+    recent = [t for t in state.get("oom_recent", []) + [k["ts"] for k in kills]
+              if t > now - 3600]
+    state["oom_recent"] = recent
+    return {"ok": not kills, "count": len(kills), "last_hour": len(recent),
+            "kills": kills[-10:]}
+
+
+def _oom_note(cfg: dict, check: dict) -> str:
+    """One line to the chief naming every process the kernel killed."""
+    if check.get("ok", True) or cfg["alert"] == "off":
+        return "none"
+    said = "; ".join(
+        f"{k['process']} (pid {k['pid']}) " + (
+            f"-- the WHOLE BOX ran out, asked for by {k['trigger'] or '?'}"
+            if k["box_wide"] else f"-- over its own cap in {k['cgroup'] or '?'}")
+        for k in check["kills"])
+    text = (f"[Shaliach] URGENT, deckdoctor: the kernel killed {check['count']} "
+            f"process(es) for memory: {said}. Retire idle desks before starting "
+            "builds or deploys; `free -m` and `docker stats` show who holds RAM.")
+    _, chief = _desk_names(cfg["roster"])
+    if not chief:
+        return "no_chief"
+    try:
+        cfg["post"](chief, text)
+        return "posted"
+    except Exception as err:
+        return _short(f"failed: {err}")
+
+
+# -- the alert ---------------------------------------------------------------
+
+
+def _line(name: str, check: dict, cfg: dict) -> str:
+    if name == "disk_pct":
+        said = f"disk {check.get('value')}% used (red at {cfg['disk_red_pct']:g}%)"
+    elif name == "memory":
+        said = (f"RAM {check.get('value')}% available for {check.get('low_for')}s "
+                f"(red under {100 * LOW_RAM:g}% for {LOW_RAM_SECONDS:g}s)")
+    elif name == "stuck_messages":
+        said = f"{check.get('count')} owner message(s) unread past 5 min ({', '.join(check.get('desks', []))})"
+    else:
+        said = f"{name}: {check.get('detail') or 'red'}"
+    return f"{said}. {RUNBOOK[name]}"
+
+
+def _alert(cfg: dict, state: dict, checks: dict) -> dict:
+    now, mode = cfg["now"](), cfg["alert"]
+    last = state.setdefault("last_alert", {})
+    red = [n for n, c in checks.items() if not c["ok"]]
+    for name in [n for n in last if n not in red]:
+        del last[name]                       # recovered: its next failure speaks again
+    fresh = [n for n in red if now - float(last.get(n) or -1e18) >= cfg["dedupe_seconds"]]
+    if not fresh:
+        return {"cos": "quiet" if red else "none", "whatsapp": "none"}
+    text = "[Shaliach] deckdoctor RED -- " + " ".join(_line(n, checks[n], cfg) for n in fresh)
+    if mode == "off":
+        return {"cos": "off", "whatsapp": "off"}
+    _, chief = _desk_names(cfg["roster"])
+    result = {}
+    if mode.startswith("file:"):
+        with open(mode[5:], "a") as fh:
+            fh.write(json.dumps({"to": chief, "from": "deck", "text": text}) + "\n")
+        result = {"cos": "file", "whatsapp": "file"}
+    else:
+        if not chief:
+            result["cos"] = "no_chief"
+        else:
+            try:
+                cfg["post"](chief, text)
+                result["cos"] = "posted"
+            except Exception as err:
+                result["cos"] = _short(f"failed: {err}")
+        try:
+            result["whatsapp"] = cfg["whatsapp"](text)
+        except Exception as err:
+            result["whatsapp"] = _short(f"failed: {err}")
+    for n in fresh:
+        last[n] = now
+    return result
+
+
+def run(cfg: dict) -> tuple[int, dict]:
+    state = _load_state(cfg["state"])
+    checks = {
+        "auth": check_auth(cfg, state),
+        "disk_pct": check_disk(cfg),
+        "daemon": check_daemon(cfg),
+        "stuck_messages": check_stuck(cfg),
+        "desks_asleep": check_asleep(cfg),
+        "code_tree": check_code_tree(cfg),
+        "renders": check_renders(cfg),
+        "memory": check_memory(cfg, state),
+        "logins": check_logins(cfg),
+    }
+    oom = check_oom(cfg, state)
+    ok = oom["ok"] and all(c["ok"] for c in checks.values())
+    alert = {"cos": "none", "whatsapp": "none"} if ok and not state.get("last_alert") \
+        else _alert(cfg, state, checks)
+    told = _oom_note(cfg, oom)  # in the check: the `alert` keys are pinned
+    checks["oom_kills"] = {**oom, "told": told} if not oom["ok"] else oom
+    _save_state(cfg["state"], state)
+    return (0 if ok else 1), {"ok": ok, "checks": checks, "alert": alert}
+
+
+def main(argv: list[str] | None = None, env: dict | None = None,
+         cfg: dict | None = None) -> int:
+    code, report = run(cfg or config(env))
+    print(json.dumps(report, separators=(", ", ": ")))
+    return code
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

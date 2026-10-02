@@ -1,0 +1,2857 @@
+{
+"t0": 0,
+"duration": 3600.0,
+"roster": [
+{
+"name": "desk-01",
+"reports_to": null,
+"label": "",
+"test": false
+},
+{
+"name": "desk-02",
+"reports_to": null,
+"label": "chief",
+"test": false
+},
+{
+"name": "desk-03",
+"reports_to": "desk-02",
+"label": "",
+"test": false
+},
+{
+"name": "desk-04",
+"reports_to": "desk-02",
+"label": "",
+"test": false
+},
+{
+"name": "desk-05",
+"reports_to": "desk-02",
+"label": "",
+"test": false
+},
+{
+"name": "desk-06",
+"reports_to": "desk-02",
+"label": "",
+"test": false
+},
+{
+"name": "desk-07",
+"reports_to": "desk-02",
+"label": "",
+"test": false
+},
+{
+"name": "desk-08",
+"reports_to": "desk-02",
+"label": "",
+"test": false
+},
+{
+"name": "desk-09",
+"reports_to": null,
+"label": "engineer test desk",
+"test": false
+},
+{
+"name": "desk-10",
+"reports_to": "desk-02",
+"label": "",
+"test": false
+},
+{
+"name": "desk-11",
+"reports_to": "desk-02",
+"label": "",
+"test": false
+},
+{
+"name": "desk-12",
+"reports_to": "desk-02",
+"label": "",
+"test": false
+},
+{
+"name": "desk-13",
+"reports_to": "desk-02",
+"label": "",
+"test": false
+},
+{
+"name": "desk-14",
+"reports_to": "desk-02",
+"label": "",
+"test": false
+},
+{
+"name": "desk-15",
+"reports_to": "desk-02",
+"label": "",
+"test": false
+},
+{
+"name": "desk-16",
+"reports_to": "desk-02",
+"label": "",
+"test": false
+}
+],
+"events": [
+{
+"t": -3595.23,
+"type": "record",
+"id": "m0000",
+"to": "desk-02",
+"from": "desk-11",
+"said": true
+},
+{
+"t": -3562.602,
+"type": "record",
+"id": "m0001",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": -3562.195,
+"type": "record",
+"id": "m0002",
+"to": "owner",
+"from": "desk-11",
+"spoke": true
+},
+{
+"t": -3536.615,
+"type": "approval",
+"card": "ask33",
+"agent": "desk-10",
+"settled_at": -3519.14
+},
+{
+"t": -3533.728,
+"type": "record",
+"id": "m0003",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": -3528.681,
+"type": "record",
+"id": "m0004",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": -3519.129,
+"type": "record",
+"id": "m0005",
+"to": "desk-10",
+"from": "deck"
+},
+{
+"t": -3472.101,
+"type": "record",
+"id": "m0006",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": -3461.361,
+"type": "record",
+"id": "m0007",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": -3447.673,
+"type": "record",
+"id": "m0008",
+"to": "owner",
+"from": "desk-02",
+"said": true
+},
+{
+"t": -3433.275,
+"type": "record",
+"id": "m0009",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": -3432.743,
+"type": "record",
+"id": "m0010",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": -3431.93,
+"type": "record",
+"id": "m0011",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": -3423.029,
+"type": "record",
+"id": "m0012",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": -3423.028,
+"type": "record",
+"id": "m0013",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": -3381.947,
+"type": "record",
+"id": "m0014",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": -3376.411,
+"type": "record",
+"id": "m0015",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": -3246.349,
+"type": "record",
+"id": "m0016",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": -3243.566,
+"type": "record",
+"id": "m0017",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": -3238.592,
+"type": "record",
+"id": "m0018",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": -3235.739,
+"type": "record",
+"id": "m0019",
+"to": "owner",
+"from": "desk-02",
+"said": true
+},
+{
+"t": -3223.556,
+"type": "record",
+"id": "m0020",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": -3193.555,
+"type": "record",
+"id": "m0021",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": -3182.383,
+"type": "record",
+"id": "m0022",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": -3131.092,
+"type": "record",
+"id": "m0023",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": -2786.144,
+"type": "record",
+"id": "m0024",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": -2783.019,
+"type": "record",
+"id": "m0025",
+"to": "owner",
+"from": "desk-02",
+"said": true
+},
+{
+"t": -2780.88,
+"type": "record",
+"id": "m0026",
+"to": "desk-13",
+"from": "desk-02"
+},
+{
+"t": -2774.715,
+"type": "record",
+"id": "m0027",
+"to": "desk-14",
+"from": "desk-02"
+},
+{
+"t": -2764.731,
+"type": "record",
+"id": "m0028",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": -2727.999,
+"type": "record",
+"id": "m0029",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": -2725.706,
+"type": "record",
+"id": "m0030",
+"to": "owner",
+"from": "desk-02",
+"said": true
+},
+{
+"t": -2717.074,
+"type": "record",
+"id": "m0031",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": -2699.653,
+"type": "record",
+"id": "m0032",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": -2694.253,
+"type": "record",
+"id": "m0033",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": -2575.794,
+"type": "record",
+"id": "m0034",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": -2571.443,
+"type": "record",
+"id": "m0035",
+"to": "owner",
+"from": "desk-02",
+"said": true
+},
+{
+"t": -2569.743,
+"type": "record",
+"id": "m0036",
+"to": "desk-10",
+"from": "desk-02"
+},
+{
+"t": -2563.835,
+"type": "record",
+"id": "m0037",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": -2544.241,
+"type": "record",
+"id": "m0038",
+"to": "desk-02",
+"from": "desk-10"
+},
+{
+"t": -2532.604,
+"type": "record",
+"id": "m0039",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": -2529.792,
+"type": "card_settled",
+"card": "dec_x",
+"at": -2523.412
+},
+{
+"t": -2529.789,
+"type": "record",
+"id": "m0040",
+"to": "owner",
+"from": "desk-02",
+"kind": "decision",
+"card": "dec_03"
+},
+{
+"t": -2529.09,
+"type": "record",
+"id": "m0041",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": -2526.642,
+"type": "record",
+"id": "m0042",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": -2523.41,
+"type": "record",
+"id": "m0043",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": -2519.663,
+"type": "record",
+"id": "m0044",
+"to": "desk-10",
+"from": "desk-02"
+},
+{
+"t": -2516.059,
+"type": "record",
+"id": "m0045",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": -2470.312,
+"type": "record",
+"id": "m0046",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": -2464.956,
+"type": "record",
+"id": "m0047",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": -2435.912,
+"type": "record",
+"id": "m0048",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": -2379.697,
+"type": "record",
+"id": "m0049",
+"to": "owner",
+"from": "desk-09",
+"said": true,
+"urgent": true
+},
+{
+"t": -2298.338,
+"type": "record",
+"id": "m0050",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": -2256.315,
+"type": "record",
+"id": "m0051",
+"to": "desk-10",
+"from": "deck"
+},
+{
+"t": -2249.529,
+"type": "record",
+"id": "m0052",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": -2211.694,
+"type": "record",
+"id": "m0053",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": -2208.876,
+"type": "record",
+"id": "m0054",
+"to": "desk-10",
+"from": "desk-02"
+},
+{
+"t": -2205.553,
+"type": "record",
+"id": "m0055",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": -2204.5,
+"type": "record",
+"id": "m0056",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": -2204.203,
+"type": "record",
+"id": "m0057",
+"to": "desk-10",
+"from": "owner"
+},
+{
+"t": -2196.028,
+"type": "record",
+"id": "m0058",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": -2187.98,
+"type": "record",
+"id": "m0059",
+"to": "desk-10",
+"from": "deck"
+},
+{
+"t": -2181.89,
+"type": "record",
+"id": "m0060",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": -2152.723,
+"type": "record",
+"id": "m0061",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": -2092.786,
+"type": "record",
+"id": "m0062",
+"to": "desk-09",
+"from": "owner"
+},
+{
+"t": -2086.648,
+"type": "record",
+"id": "m0063",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": -2076.449,
+"type": "record",
+"id": "m0064",
+"to": "desk-09",
+"from": "owner"
+},
+{
+"t": -2072.59,
+"type": "record",
+"id": "m0065",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": -2064.838,
+"type": "record",
+"id": "m0066",
+"to": "desk-07",
+"from": "engineer"
+},
+{
+"t": -2055.232,
+"type": "record",
+"id": "m0067",
+"to": "owner",
+"from": "desk-07",
+"spoke": true
+},
+{
+"t": -1560.599,
+"type": "record",
+"id": "m0068",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": -1556.55,
+"type": "record",
+"id": "m0069",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": -1278.847,
+"type": "record",
+"id": "m0070",
+"to": "owner",
+"from": "desk-09",
+"restarted": true
+},
+{
+"t": -1272.248,
+"type": "record",
+"id": "m0071",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": -1265.91,
+"type": "record",
+"id": "m0072",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": -1261.371,
+"type": "record",
+"id": "m0073",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": -923.553,
+"type": "record",
+"id": "m0074",
+"to": "desk-09",
+"from": "owner"
+},
+{
+"t": -901.881,
+"type": "record",
+"id": "m0075",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": -891.699,
+"type": "record",
+"id": "m0076",
+"to": "desk-09",
+"from": "owner"
+},
+{
+"t": -885.645,
+"type": "record",
+"id": "m0077",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": -866.862,
+"type": "record",
+"id": "m0078",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": -866.861,
+"type": "record",
+"id": "m0079",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": -851.29,
+"type": "record",
+"id": "m0080",
+"to": "desk-09",
+"from": "owner"
+},
+{
+"t": -847.575,
+"type": "record",
+"id": "m0081",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": -741.814,
+"type": "record",
+"id": "m0082",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": -548.255,
+"type": "record",
+"id": "m0083",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": -545.447,
+"type": "record",
+"id": "m0084",
+"to": "desk-11",
+"from": "desk-10"
+},
+{
+"t": -539.009,
+"type": "record",
+"id": "m0085",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": -538.509,
+"type": "record",
+"id": "m0086",
+"to": "desk-02",
+"from": "desk-11",
+"said": true
+},
+{
+"t": -534.462,
+"type": "record",
+"id": "m0087",
+"to": "owner",
+"from": "desk-11",
+"spoke": true
+},
+{
+"t": -312.905,
+"type": "record",
+"id": "m0088",
+"to": "desk-09",
+"from": "owner"
+},
+{
+"t": -305.926,
+"type": "record",
+"id": "m0089",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": -277.344,
+"type": "record",
+"id": "m0090",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": -269.0,
+"type": "record",
+"id": "m0091",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": -226.439,
+"type": "record",
+"id": "m0092",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": -224.668,
+"type": "record",
+"id": "m0093",
+"to": "owner",
+"from": "desk-02",
+"said": true
+},
+{
+"t": -223.356,
+"type": "record",
+"id": "m0094",
+"to": "desk-11",
+"from": "desk-02"
+},
+{
+"t": -219.323,
+"type": "approval",
+"card": "ask34",
+"agent": "desk-11",
+"settled_at": -214.319
+},
+{
+"t": -216.934,
+"type": "card_settled",
+"card": "dec_x",
+"at": -171.156
+},
+{
+"t": -216.929,
+"type": "record",
+"id": "m0095",
+"to": "owner",
+"from": "desk-02",
+"kind": "decision",
+"card": "dec_02"
+},
+{
+"t": -214.956,
+"type": "record",
+"id": "m0096",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": -214.31,
+"type": "record",
+"id": "m0097",
+"to": "desk-11",
+"from": "deck"
+},
+{
+"t": -213.529,
+"type": "record",
+"id": "m0098",
+"to": "desk-02",
+"from": "desk-11",
+"said": true
+},
+{
+"t": -208.612,
+"type": "record",
+"id": "m0099",
+"to": "owner",
+"from": "desk-11",
+"spoke": true
+},
+{
+"t": -206.606,
+"type": "record",
+"id": "m0100",
+"to": "desk-09",
+"from": "owner"
+},
+{
+"t": -205.433,
+"type": "record",
+"id": "m0101",
+"to": "desk-09",
+"from": "owner"
+},
+{
+"t": -203.318,
+"type": "record",
+"id": "m0102",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": -199.807,
+"type": "record",
+"id": "m0103",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": -171.155,
+"type": "record",
+"id": "m0104",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": -167.3,
+"type": "record",
+"id": "m0105",
+"to": "desk-11",
+"from": "desk-02"
+},
+{
+"t": -163.112,
+"type": "record",
+"id": "m0106",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": -159.785,
+"type": "record",
+"id": "m0107",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": -159.63,
+"type": "record",
+"id": "m0108",
+"to": "desk-02",
+"from": "desk-11",
+"said": true
+},
+{
+"t": -155.607,
+"type": "record",
+"id": "m0109",
+"to": "desk-11",
+"from": "desk-02"
+},
+{
+"t": -155.39,
+"type": "record",
+"id": "m0110",
+"to": "owner",
+"from": "desk-11",
+"spoke": true
+},
+{
+"t": -155.229,
+"type": "record",
+"id": "m0111",
+"to": "desk-10",
+"from": "desk-02"
+},
+{
+"t": -147.859,
+"type": "record",
+"id": "m0112",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": -143.605,
+"type": "record",
+"id": "m0113",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": -142.011,
+"type": "record",
+"id": "m0114",
+"to": "desk-10",
+"from": "desk-11"
+},
+{
+"t": -137.967,
+"type": "record",
+"id": "m0115",
+"to": "owner",
+"from": "desk-11",
+"spoke": true
+},
+{
+"t": -130.657,
+"type": "record",
+"id": "m0116",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": -78.677,
+"type": "record",
+"id": "m0117",
+"to": "desk-11",
+"from": "desk-10"
+},
+{
+"t": -76.796,
+"type": "record",
+"id": "m0118",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": -70.991,
+"type": "record",
+"id": "m0119",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": -68.095,
+"type": "record",
+"id": "m0120",
+"to": "desk-02",
+"from": "desk-11",
+"said": true
+},
+{
+"t": -66.108,
+"type": "record",
+"id": "m0121",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": -63.213,
+"type": "record",
+"id": "m0122",
+"to": "owner",
+"from": "desk-11",
+"spoke": true
+},
+{
+"t": -61.084,
+"type": "record",
+"id": "m0123",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": -43.99,
+"type": "record",
+"id": "m0124",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": -40.649,
+"type": "record",
+"id": "m0125",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 32.938,
+"type": "record",
+"id": "m0126",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 35.674,
+"type": "record",
+"id": "m0127",
+"to": "owner",
+"from": "desk-02",
+"said": true
+},
+{
+"t": 38.528,
+"type": "record",
+"id": "m0128",
+"to": "desk-12",
+"from": "desk-02"
+},
+{
+"t": 42.204,
+"type": "record",
+"id": "m0129",
+"to": "desk-10",
+"from": "desk-02"
+},
+{
+"t": 45.922,
+"type": "record",
+"id": "m0130",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 48.047,
+"type": "record",
+"id": "m0131",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": 51.842,
+"type": "record",
+"id": "m0132",
+"to": "desk-02",
+"from": "desk-12",
+"said": true
+},
+{
+"t": 75.49,
+"type": "record",
+"id": "m0133",
+"to": "desk-02",
+"from": "desk-12",
+"said": true
+},
+{
+"t": 88.098,
+"type": "approval",
+"card": "ask35",
+"agent": "desk-12",
+"settled_at": 93.825
+},
+{
+"t": 91.052,
+"type": "approval",
+"card": "ask36",
+"agent": "desk-12",
+"settled_at": 94.244
+},
+{
+"t": 93.837,
+"type": "record",
+"id": "m0134",
+"to": "desk-12",
+"from": "deck"
+},
+{
+"t": 97.398,
+"type": "handoff",
+"card": "h12",
+"agent": "desk-12",
+"status": "done"
+},
+{
+"t": 99.964,
+"type": "record",
+"id": "m0135",
+"to": "desk-02",
+"from": "desk-12",
+"said": true
+},
+{
+"t": 102.76,
+"type": "record",
+"id": "m0136",
+"to": "owner",
+"from": "desk-12",
+"spoke": true
+},
+{
+"t": 107.245,
+"type": "record",
+"id": "m0137",
+"to": "desk-12",
+"from": "deck"
+},
+{
+"t": 121.613,
+"type": "record",
+"id": "m0138",
+"to": "desk-02",
+"from": "desk-12",
+"said": true
+},
+{
+"t": 127.412,
+"type": "record",
+"id": "m0139",
+"to": "owner",
+"from": "desk-12",
+"spoke": true
+},
+{
+"t": 135.465,
+"type": "record",
+"id": "m0140",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 140.248,
+"type": "record",
+"id": "m0141",
+"to": "owner",
+"from": "desk-02",
+"said": true
+},
+{
+"t": 143.598,
+"type": "record",
+"id": "m0142",
+"to": "desk-04",
+"from": "desk-02"
+},
+{
+"t": 147.269,
+"type": "record",
+"id": "m0143",
+"to": "desk-10",
+"from": "desk-02"
+},
+{
+"t": 149.3,
+"type": "record",
+"id": "m0144",
+"to": "desk-02",
+"from": "desk-12",
+"said": true
+},
+{
+"t": 150.834,
+"type": "record",
+"id": "m0145",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": 153.576,
+"type": "approval",
+"card": "ask37",
+"agent": "desk-12",
+"settled_at": 156.068
+},
+{
+"t": 153.651,
+"type": "record",
+"id": "m0146",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 156.08,
+"type": "record",
+"id": "m0147",
+"to": "desk-12",
+"from": "deck"
+},
+{
+"t": 166.721,
+"type": "record",
+"id": "m0148",
+"to": "desk-05",
+"from": "desk-04"
+},
+{
+"t": 167.63,
+"type": "record",
+"id": "m0149",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": 168.934,
+"type": "record",
+"id": "m0150",
+"to": "desk-10",
+"from": "desk-12"
+},
+{
+"t": 169.891,
+"type": "record",
+"id": "m0151",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 173.128,
+"type": "record",
+"id": "m0152",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": 174.218,
+"type": "record",
+"id": "m0153",
+"to": "owner",
+"from": "desk-04",
+"spoke": true
+},
+{
+"t": 179.039,
+"type": "record",
+"id": "m0154",
+"to": "desk-02",
+"from": "desk-05",
+"said": true
+},
+{
+"t": 182.465,
+"type": "record",
+"id": "m0155",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": 184.669,
+"type": "record",
+"id": "m0156",
+"to": "desk-10",
+"from": "desk-12"
+},
+{
+"t": 196.185,
+"type": "record",
+"id": "m0157",
+"to": "owner",
+"from": "desk-12",
+"spoke": true
+},
+{
+"t": 196.705,
+"type": "approval",
+"card": "ask38",
+"agent": "desk-05",
+"settled_at": 215.104
+},
+{
+"t": 207.84,
+"type": "record",
+"id": "m0158",
+"to": "desk-04",
+"from": "desk-05"
+},
+{
+"t": 209.195,
+"type": "record",
+"id": "m0159",
+"to": "desk-02",
+"from": "desk-05"
+},
+{
+"t": 211.586,
+"type": "record",
+"id": "m0160",
+"to": "desk-05",
+"from": "desk-04"
+},
+{
+"t": 213.68,
+"type": "card_settled",
+"card": "dec_x",
+"at": 239.245
+},
+{
+"t": 213.682,
+"type": "record",
+"id": "m0161",
+"to": "owner",
+"from": "desk-02",
+"kind": "decision",
+"card": "dec_00"
+},
+{
+"t": 214.598,
+"type": "record",
+"id": "m0162",
+"to": "owner",
+"from": "desk-04",
+"spoke": true
+},
+{
+"t": 215.116,
+"type": "record",
+"id": "m0163",
+"to": "desk-05",
+"from": "deck"
+},
+{
+"t": 216.727,
+"type": "record",
+"id": "m0164",
+"to": "owner",
+"from": "desk-05",
+"spoke": true
+},
+{
+"t": 217.791,
+"type": "record",
+"id": "m0165",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 220.03,
+"type": "record",
+"id": "m0166",
+"to": "desk-02",
+"from": "desk-05",
+"said": true
+},
+{
+"t": 221.089,
+"type": "approval",
+"card": "ask39",
+"agent": "desk-05",
+"settled_at": 230.845
+},
+{
+"t": 230.855,
+"type": "record",
+"id": "m0167",
+"to": "desk-05",
+"from": "deck"
+},
+{
+"t": 239.249,
+"type": "record",
+"id": "m0168",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 242.169,
+"type": "record",
+"id": "m0169",
+"to": "owner",
+"from": "desk-02",
+"said": true
+},
+{
+"t": 245.464,
+"type": "approval",
+"card": "ask40",
+"agent": "desk-02",
+"settled_at": 254.477
+},
+{
+"t": 246.15,
+"type": "record",
+"id": "m0170",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 249.584,
+"type": "record",
+"id": "m0171",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 251.04,
+"type": "record",
+"id": "m0172",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 252.543,
+"type": "record",
+"id": "m0173",
+"to": "desk-05",
+"from": "desk-02"
+},
+{
+"t": 254.488,
+"type": "record",
+"id": "m0174",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 255.25,
+"type": "record",
+"id": "m0175",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 260.554,
+"type": "record",
+"id": "m0176",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 264.448,
+"type": "record",
+"id": "m0177",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 268.785,
+"type": "record",
+"id": "m0178",
+"to": "owner",
+"from": "desk-02",
+"said": true
+},
+{
+"t": 276.036,
+"type": "approval",
+"card": "ask41",
+"agent": "desk-10",
+"settled_at": 296.933
+},
+{
+"t": 276.779,
+"type": "record",
+"id": "m0179",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 280.29,
+"type": "approval",
+"card": "ask42",
+"agent": "desk-10",
+"settled_at": 297.343
+},
+{
+"t": 283.584,
+"type": "record",
+"id": "m0180",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": 290.946,
+"type": "record",
+"id": "m0181",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": 296.944,
+"type": "record",
+"id": "m0182",
+"to": "desk-10",
+"from": "deck"
+},
+{
+"t": 297.354,
+"type": "record",
+"id": "m0183",
+"to": "desk-10",
+"from": "deck"
+},
+{
+"t": 332.423,
+"type": "record",
+"id": "m0184",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": 337.5,
+"type": "record",
+"id": "m0185",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": 348.602,
+"type": "approval",
+"card": "ask43",
+"agent": "desk-10",
+"settled_at": 353.81
+},
+{
+"t": 353.826,
+"type": "record",
+"id": "m0186",
+"to": "desk-10",
+"from": "deck"
+},
+{
+"t": 368.943,
+"type": "record",
+"id": "m0187",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": 432.226,
+"type": "record",
+"id": "m0188",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 434.943,
+"type": "record",
+"id": "m0189",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 445.271,
+"type": "record",
+"id": "m0190",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 448.036,
+"type": "record",
+"id": "m0191",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 469.574,
+"type": "record",
+"id": "m0192",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 472.556,
+"type": "card_settled",
+"card": "dec_x",
+"at": 481.254
+},
+{
+"t": 472.558,
+"type": "record",
+"id": "m0193",
+"to": "owner",
+"from": "desk-02",
+"kind": "decision",
+"card": "dec_01"
+},
+{
+"t": 476.316,
+"type": "record",
+"id": "m0194",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 481.256,
+"type": "record",
+"id": "m0195",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 485.13,
+"type": "record",
+"id": "m0196",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 498.555,
+"type": "record",
+"id": "m0197",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 501.195,
+"type": "record",
+"id": "m0198",
+"to": "owner",
+"from": "desk-02",
+"said": true
+},
+{
+"t": 504.821,
+"type": "handoff",
+"card": "h13",
+"agent": "desk-02",
+"status": "skipped"
+},
+{
+"t": 508.828,
+"type": "record",
+"id": "m0199",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 558.612,
+"type": "record",
+"id": "m0200",
+"to": "desk-02",
+"from": "desk-05",
+"said": true
+},
+{
+"t": 581.298,
+"type": "approval",
+"card": "ask44",
+"agent": "desk-05",
+"settled_at": 609.107
+},
+{
+"t": 584.468,
+"type": "record",
+"id": "m0201",
+"to": "desk-04",
+"from": "desk-05"
+},
+{
+"t": 589.277,
+"type": "record",
+"id": "m0202",
+"to": "owner",
+"from": "desk-04",
+"spoke": true
+},
+{
+"t": 590.34,
+"type": "record",
+"id": "m0203",
+"to": "owner",
+"from": "desk-05",
+"spoke": true
+},
+{
+"t": 606.59,
+"type": "record",
+"id": "m0204",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 609.118,
+"type": "record",
+"id": "m0205",
+"to": "desk-05",
+"from": "deck"
+},
+{
+"t": 609.799,
+"type": "record",
+"id": "m0206",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 621.22,
+"type": "record",
+"id": "m0207",
+"to": "desk-04",
+"from": "desk-05"
+},
+{
+"t": 624.988,
+"type": "record",
+"id": "m0208",
+"to": "owner",
+"from": "desk-04",
+"spoke": true
+},
+{
+"t": 634.83,
+"type": "record",
+"id": "m0209",
+"to": "owner",
+"from": "desk-05",
+"spoke": true
+},
+{
+"t": 755.662,
+"type": "record",
+"id": "m0210",
+"to": "desk-09",
+"from": "owner"
+},
+{
+"t": 762.647,
+"type": "record",
+"id": "m0211",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": 922.305,
+"type": "record",
+"id": "m0212",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 932.294,
+"type": "record",
+"id": "m0213",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 948.183,
+"type": "record",
+"id": "m0214",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 950.827,
+"type": "record",
+"id": "m0215",
+"to": "desk-11",
+"from": "desk-02"
+},
+{
+"t": 953.414,
+"type": "record",
+"id": "m0216",
+"to": "desk-02",
+"from": "desk-11",
+"said": true
+},
+{
+"t": 954.89,
+"type": "record",
+"id": "m0217",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 956.021,
+"type": "handoff",
+"card": "h14",
+"agent": "desk-11",
+"status": "done"
+},
+{
+"t": 958.865,
+"type": "record",
+"id": "m0218",
+"to": "desk-02",
+"from": "desk-11",
+"said": true
+},
+{
+"t": 961.618,
+"type": "record",
+"id": "m0219",
+"to": "owner",
+"from": "desk-11",
+"spoke": true
+},
+{
+"t": 976.208,
+"type": "record",
+"id": "m0220",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 981.739,
+"type": "record",
+"id": "m0221",
+"to": "owner",
+"from": "desk-02",
+"said": true
+},
+{
+"t": 986.386,
+"type": "handoff",
+"card": "h15",
+"agent": "desk-02",
+"status": "done"
+},
+{
+"t": 989.988,
+"type": "record",
+"id": "m0222",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 990.152,
+"type": "record",
+"id": "m0223",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 990.467,
+"type": "record",
+"id": "m0224",
+"to": "desk-11",
+"from": "deck"
+},
+{
+"t": 1002.962,
+"type": "record",
+"id": "m0225",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 1013.98,
+"type": "record",
+"id": "m0226",
+"to": "desk-02",
+"from": "desk-11",
+"said": true
+},
+{
+"t": 1024.885,
+"type": "record",
+"id": "m0227",
+"to": "desk-02",
+"from": "desk-11",
+"said": true
+},
+{
+"t": 1029.308,
+"type": "record",
+"id": "m0228",
+"to": "owner",
+"from": "desk-11",
+"spoke": true
+},
+{
+"t": 1172.07,
+"type": "record",
+"id": "m0229",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 1177.205,
+"type": "record",
+"id": "m0230",
+"to": "owner",
+"from": "desk-02",
+"said": true
+},
+{
+"t": 1178.491,
+"type": "record",
+"id": "m0231",
+"to": "desk-11",
+"from": "desk-02"
+},
+{
+"t": 1202.629,
+"type": "record",
+"id": "m0232",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 1202.629,
+"type": "record",
+"id": "m0233",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 1202.638,
+"type": "record",
+"id": "m0234",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 1202.638,
+"type": "record",
+"id": "m0235",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 1219.063,
+"type": "record",
+"id": "m0236",
+"to": "desk-02",
+"from": "desk-11",
+"said": true
+},
+{
+"t": 1223.373,
+"type": "record",
+"id": "m0237",
+"to": "owner",
+"from": "desk-11",
+"spoke": true
+},
+{
+"t": 1313.275,
+"type": "record",
+"id": "m0238",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": 1522.242,
+"type": "approval",
+"card": "ask45",
+"agent": "desk-10",
+"settled_at": 1538.223
+},
+{
+"t": 1528.352,
+"type": "record",
+"id": "m0239",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": 1534.317,
+"type": "record",
+"id": "m0240",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": 1538.238,
+"type": "record",
+"id": "m0241",
+"to": "desk-10",
+"from": "deck"
+},
+{
+"t": 1547.494,
+"type": "record",
+"id": "m0242",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": 1887.679,
+"type": "record",
+"id": "m0243",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 1893.476,
+"type": "card_settled",
+"card": "dec_x",
+"at": 3063.271
+},
+{
+"t": 1893.482,
+"type": "record",
+"id": "m0244",
+"to": "owner",
+"from": "desk-02",
+"kind": "decision",
+"card": "dec_04"
+},
+{
+"t": 1897.21,
+"type": "record",
+"id": "m0245",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 1909.029,
+"type": "record",
+"id": "m0246",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 1913.551,
+"type": "record",
+"id": "m0247",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2028.947,
+"type": "record",
+"id": "m0248",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 2033.667,
+"type": "record",
+"id": "m0249",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2161.533,
+"type": "record",
+"id": "m0250",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 2168.126,
+"type": "record",
+"id": "m0251",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2347.784,
+"type": "record",
+"id": "m0252",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 2351.326,
+"type": "record",
+"id": "m0253",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2360.053,
+"type": "record",
+"id": "m0254",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 2362.114,
+"type": "record",
+"id": "m0255",
+"to": "owner",
+"from": "desk-02",
+"said": true
+},
+{
+"t": 2371.291,
+"type": "record",
+"id": "m0256",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2406.694,
+"type": "record",
+"id": "m0257",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 2413.594,
+"type": "record",
+"id": "m0258",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2425.388,
+"type": "record",
+"id": "m0259",
+"to": "desk-02",
+"from": "desk-10",
+"said": true
+},
+{
+"t": 2429.996,
+"type": "record",
+"id": "m0260",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": 2445.151,
+"type": "record",
+"id": "m0261",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 2451.123,
+"type": "record",
+"id": "m0262",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2495.442,
+"type": "record",
+"id": "m0263",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 2502.223,
+"type": "record",
+"id": "m0264",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2553.451,
+"type": "record",
+"id": "m0265",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 2559.249,
+"type": "record",
+"id": "m0266",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2586.778,
+"type": "record",
+"id": "m0267",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 2596.907,
+"type": "record",
+"id": "m0268",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2606.581,
+"type": "record",
+"id": "m0269",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2672.905,
+"type": "record",
+"id": "m0270",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": 2672.906,
+"type": "record",
+"id": "m0271",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": 2672.906,
+"type": "record",
+"id": "m0272",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": 2672.907,
+"type": "record",
+"id": "m0273",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": 2672.907,
+"type": "record",
+"id": "m0274",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": 2672.908,
+"type": "record",
+"id": "m0275",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": 2672.908,
+"type": "record",
+"id": "m0276",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": 2672.909,
+"type": "record",
+"id": "m0277",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": 2672.91,
+"type": "record",
+"id": "m0278",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": 2675.417,
+"type": "record",
+"id": "m0279",
+"to": "desk-09",
+"from": "owner"
+},
+{
+"t": 2682.701,
+"type": "record",
+"id": "m0280",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": 2697.183,
+"type": "record",
+"id": "m0281",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 2699.619,
+"type": "record",
+"id": "m0282",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": 2700.686,
+"type": "record",
+"id": "m0283",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2718.277,
+"type": "record",
+"id": "m0284",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 2721.703,
+"type": "record",
+"id": "m0285",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2737.483,
+"type": "record",
+"id": "m0286",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": 2793.195,
+"type": "record",
+"id": "m0287",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 2796.628,
+"type": "record",
+"id": "m0288",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2847.991,
+"type": "record",
+"id": "m0289",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 2854.022,
+"type": "record",
+"id": "m0290",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2899.868,
+"type": "record",
+"id": "m0291",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 2903.521,
+"type": "record",
+"id": "m0292",
+"to": "owner",
+"from": "desk-02",
+"said": true
+},
+{
+"t": 2904.029,
+"type": "record",
+"id": "m0293",
+"to": "desk-10",
+"from": "desk-02"
+},
+{
+"t": 2907.27,
+"type": "record",
+"id": "m0294",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2910.458,
+"type": "record",
+"id": "m0295",
+"to": "owner",
+"from": "desk-10",
+"spoke": true
+},
+{
+"t": 2946.975,
+"type": "record",
+"id": "m0296",
+"to": "desk-09",
+"from": "owner"
+},
+{
+"t": 2954.057,
+"type": "record",
+"id": "m0297",
+"to": "owner",
+"from": "desk-09",
+"spoke": true
+},
+{
+"t": 2956.357,
+"type": "record",
+"id": "m0298",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 2957.252,
+"type": "record",
+"id": "m0299",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2960.909,
+"type": "record",
+"id": "m0300",
+"to": "desk-11",
+"from": "desk-02"
+},
+{
+"t": 2964.779,
+"type": "record",
+"id": "m0301",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 2967.205,
+"type": "record",
+"id": "m0302",
+"to": "desk-02",
+"from": "desk-11",
+"said": true
+},
+{
+"t": 2973.997,
+"type": "record",
+"id": "m0303",
+"to": "desk-02",
+"from": "desk-11",
+"said": true
+},
+{
+"t": 2977.938,
+"type": "record",
+"id": "m0304",
+"to": "owner",
+"from": "desk-11",
+"spoke": true
+},
+{
+"t": 3063.281,
+"type": "record",
+"id": "m0305",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 3081.949,
+"type": "record",
+"id": "m0306",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 3082.72,
+"type": "record",
+"id": "m0307",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 3082.721,
+"type": "record",
+"id": "m0308",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 3094.237,
+"type": "record",
+"id": "m0309",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 3101.654,
+"type": "record",
+"id": "m0310",
+"to": "desk-11",
+"from": "desk-02"
+},
+{
+"t": 3104.199,
+"type": "record",
+"id": "m0311",
+"to": "desk-15",
+"from": "desk-02"
+},
+{
+"t": 3105.224,
+"type": "record",
+"id": "m0312",
+"to": "desk-16",
+"from": "desk-02"
+},
+{
+"t": 3106.047,
+"type": "record",
+"id": "m0313",
+"to": "desk-02",
+"from": "desk-15",
+"said": true
+},
+{
+"t": 3107.333,
+"type": "record",
+"id": "m0314",
+"to": "desk-02",
+"from": "desk-11",
+"said": true
+},
+{
+"t": 3109.172,
+"type": "record",
+"id": "m0315",
+"to": "desk-02",
+"from": "desk-16",
+"said": true
+},
+{
+"t": 3109.46,
+"type": "record",
+"id": "m0316",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 3110.233,
+"type": "approval",
+"card": "ask46",
+"agent": "desk-16",
+"settled_at": 3117.728
+},
+{
+"t": 3111.694,
+"type": "record",
+"id": "m0317",
+"to": "owner",
+"from": "desk-11",
+"spoke": true
+},
+{
+"t": 3117.751,
+"type": "record",
+"id": "m0318",
+"to": "desk-16",
+"from": "deck"
+},
+{
+"t": 3123.272,
+"type": "approval",
+"card": "ask47",
+"agent": "desk-16",
+"settled_at": 3226.013
+},
+{
+"t": 3126.703,
+"type": "record",
+"id": "m0319",
+"to": "desk-02",
+"from": "desk-16",
+"said": true
+},
+{
+"t": 3127.358,
+"type": "approval",
+"card": "ask48",
+"agent": "desk-16",
+"settled_at": 3151.455
+},
+{
+"t": 3150.028,
+"type": "record",
+"id": "m0320",
+"to": "desk-02",
+"from": "desk-15",
+"said": true
+},
+{
+"t": 3151.467,
+"type": "record",
+"id": "m0321",
+"to": "desk-16",
+"from": "deck"
+},
+{
+"t": 3159.378,
+"type": "record",
+"id": "m0322",
+"to": "desk-02",
+"from": "desk-16",
+"said": true
+},
+{
+"t": 3163.057,
+"type": "approval",
+"card": "ask49",
+"agent": "desk-16",
+"settled_at": 3170.271
+},
+{
+"t": 3170.284,
+"type": "record",
+"id": "m0323",
+"to": "desk-16",
+"from": "deck"
+},
+{
+"t": 3186.397,
+"type": "record",
+"id": "m0324",
+"to": "desk-02",
+"from": "desk-15",
+"said": true
+},
+{
+"t": 3207.68,
+"type": "record",
+"id": "m0325",
+"to": "owner",
+"from": "desk-15",
+"spoke": true
+},
+{
+"t": 3226.024,
+"type": "record",
+"id": "m0326",
+"to": "desk-16",
+"from": "deck"
+},
+{
+"t": 3229.096,
+"type": "record",
+"id": "m0327",
+"to": "desk-02",
+"from": "desk-16"
+},
+{
+"t": 3243.878,
+"type": "record",
+"id": "m0328",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 3253.522,
+"type": "record",
+"id": "m0329",
+"to": "desk-16",
+"from": "deck"
+},
+{
+"t": 3253.523,
+"type": "record",
+"id": "m0330",
+"to": "desk-16",
+"from": "deck"
+},
+{
+"t": 3253.523,
+"type": "record",
+"id": "m0331",
+"to": "owner",
+"from": "desk-16",
+"spoke": true
+},
+{
+"t": 3351.862,
+"type": "record",
+"id": "m0332",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 3360.646,
+"type": "record",
+"id": "m0333",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 3453.073,
+"type": "record",
+"id": "m0334",
+"to": "desk-02",
+"from": "owner"
+},
+{
+"t": 3457.257,
+"type": "record",
+"id": "m0335",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+},
+{
+"t": 3507.646,
+"type": "record",
+"id": "m0336",
+"to": "desk-02",
+"from": "deck"
+},
+{
+"t": 3510.185,
+"type": "record",
+"id": "m0337",
+"to": "owner",
+"from": "desk-02",
+"spoke": true
+}
+]
+}

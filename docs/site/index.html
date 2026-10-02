@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shaliach -- your AI emissaries</title>
+<meta name="description" content="Your AI emissaries. A whole team that works for you. Text one agent and it runs the rest, on your own Mac or server.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Shaliach -- your AI emissaries">
+<meta property="og:description" content="Your AI emissaries. A whole team that works for you. Text one agent and it runs the rest, on your own Mac or server.">
+<meta property="og:url" content="https://shaliach.me/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Shaliach -- your AI emissaries">
+<meta name="twitter:description" content="Your AI emissaries. A whole team that works for you. Text one agent and it runs the rest, on your own Mac or server.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f1e7;--fg:#1d1a16;--muted:#6b6458;--card:#fffdf8;--line:#e0d7c4;--accent:#b4491f;--accent-fg:#fff;--code:#201c17;--code-fg:#f3e9d2}
+@media (prefers-color-scheme:dark){:root{--bg:#14110e;--fg:#f1eadb;--muted:#a59d8c;--card:#1c1814;--line:#2f2922;--accent:#e8783f;--accent-fg:#14110e;--code:#0c0a08;--code-fg:#f3e9d2}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.6 Inter,system-ui,sans-serif}
+main{max-width:860px;margin:0 auto;padding:0 20px}
+.hero{padding:72px 0 40px}
+.he{font:500 .9rem "IBM Plex Mono",monospace;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin:0 0 12px}
+h1{font:800 clamp(3.2rem,13vw,6.5rem)/.95 Fraunces,Georgia,serif;margin:0 0 20px;letter-spacing:-.03em}
+.tag{font:600 clamp(1.3rem,4.5vw,1.9rem)/1.25 Fraunces,Georgia,serif;margin:0 0 16px}
+.sub{color:var(--muted);max-width:60ch;margin:0 0 28px}
+.cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn{display:inline-block;background:var(--accent);color:var(--accent-fg);font-weight:600;font-size:1.15rem;padding:16px 28px;border-radius:12px;text-decoration:none}
+.btn:hover{filter:brightness(1.08)}
+.link{color:var(--fg);font-weight:500;padding:16px 8px}
+h2{font:600 1.6rem Fraunces,Georgia,serif;margin:0 0 16px}
+section{padding:32px 0;border-top:1px solid var(--line)}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+.card h3{margin:0 0 6px;font:600 1.1rem Fraunces,Georgia,serif}
+.card p{margin:0;color:var(--muted);font-size:.97rem}
+.step{margin:0 0 6px;font-weight:600}
+pre{background:var(--code);color:var(--code-fg);border-radius:12px;padding:16px;overflow-x:auto;font:400 .85rem/1.5 "IBM Plex Mono",monospace;margin:0 0 22px;user-select:all}
+.note{color:var(--muted);font-size:.95rem}
+footer{border-top:1px solid var(--line);padding:28px 0 48px;color:var(--muted);font-size:.9rem}
+footer a{color:var(--muted)}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+<header class="hero">
+  <p class="he">שליח &middot; shaliach &middot; "emissary"</p>
+  <h1>Shaliach</h1>
+  <p class="tag">Your AI emissaries. A whole team that works for you.</p>
+  <p class="sub">A chief-of-staff agent hires, briefs and runs a team of Claude Code agents on your own Mac or server. You text one agent and it runs the rest. Watch them work and approve what matters from your phone.</p>
+  <div class="cta">
+    <a class="btn" href="https://github.com/yrks12/shaliach">View on GitHub</a>
+    <a class="link" href="https://github.com/yrks12/shaliach/releases/latest">Latest release &rarr;</a>
+  </div>
+</header>
+
+<section>
+  <h2>What you get</h2>
+  <div class="grid">
+    <div class="card"><h3>A whole team</h3><p>Atlas hires the agents it needs, briefs each one and hands out the work.</p></div>
+    <div class="card"><h3>Own computers</h3><p>Every agent gets its own browser and terminal. Watch any screen live, or take over.</p></div>
+    <div class="card"><h3>You approve</h3><p>Risky steps stop and wait for your tap, from the Mac app or the iPhone app.</p></div>
+    <div class="card"><h3>Yours to run</h3><p>Your laptop or your server, your Claude plan. Source-available, free for noncommercial use.</p></div>
+  </div>
+</section>
+
+<section id="install">
+  <h2>Install</h2>
+  <p class="step">1. Server or Mac</p>
+  <pre>curl -fsSL https://raw.githubusercontent.com/yrks12/shaliach/main/install.sh | bash</pre>
+  <p class="step">2. Mac app (macOS 14+, Apple silicon)</p>
+  <pre>curl -fsSL https://raw.githubusercontent.com/yrks12/shaliach/main/scripts/install-mac.sh | bash</pre>
+  <p class="note">Each script prints what it will do, and running it again upgrades. Every agent is a real Claude Code session and uses your own Claude account.</p>
+</section>
+
+<footer>
+  <p>Source-available under the PolyForm Noncommercial License 1.0.0</p>
+  <p>Independent project, not affiliated with or endorsed by Anthropic. &middot; <a href="https://github.com/yrks12/shaliach">GitHub</a></p>
+</footer>
+</main>
+</body>
+</html>

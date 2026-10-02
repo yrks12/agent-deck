@@ -1,0 +1,127 @@
+#!/usr/bin/env python3
+"""Check every claim in docs/slices.json against git and pytest.
+
+This is not a status document. A status document is something someone writes,
+and a written status is exactly as trustworthy as the person writing it. This
+runs the checks instead, and **exits non-zero when a claim is false**:
+
+  - a slice that says it is merged, but whose branch is not an ancestor of base
+  - a file a slice claims to own that does not exist
+  - a named detector test that does not exist, or does not pass
+
+Run it yourself:  bin/deck-status
+Machine-readable: bin/deck-status --json
+"""
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+SLICES = ROOT / "docs" / "slices.json"
+PY = ROOT / ".venv" / "bin" / "python"
+
+VERIFY_RANK = {
+    "mutation-by-me": "the check was broken on purpose and the test caught it (I ran it)",
+    "mutation": "broken on purpose and caught, but reported by the agent, not re-run by me",
+    "commit-order": "I read the git log: the test commit precedes the code commit",
+    "report": "taken from the agent's report; not independently checked",
+    "none": "NOT VERIFIED",
+}
+
+
+def git(*args: str) -> str:
+    return subprocess.run(["git", "-C", str(ROOT), *args],
+                          capture_output=True, text=True).stdout.strip()
+
+
+def is_merged(branch: str, base: str) -> bool | None:
+    if not git("rev-parse", "--verify", "--quiet", branch):
+        return None                      # branch does not exist at all
+    r = subprocess.run(["git", "-C", str(ROOT), "merge-base",
+                        "--is-ancestor", branch, base],
+                       capture_output=True)
+    return r.returncode == 0
+
+
+def run_detector(node: str) -> tuple[str, str]:
+    """Returns (verdict, detail). Prose detectors are reported, not run."""
+    if "::" not in node:
+        return "prose", "not a test id - cannot be checked automatically"
+    file_part = node.split("::")[0]
+    if not (ROOT / file_part).exists():
+        return "MISSING", f"{file_part} does not exist"
+    r = subprocess.run([str(PY), "-m", "pytest", node, "-q", "--no-header"],
+                       capture_output=True, text=True, cwd=ROOT)
+    if r.returncode == 0:
+        return "pass", ""
+    tail = (r.stdout or r.stderr).strip().splitlines()
+    return "FAIL", tail[-1] if tail else "no output"
+
+
+def main() -> int:
+    as_json = "--json" in sys.argv
+    data = json.loads(SLICES.read_text())
+    base = data["base"]
+    rows, problems = [], []
+
+    for s in data["slices"]:
+        merged = is_merged(s["branch"], base)
+        missing = [f for f in s["files"] if not (ROOT / f).exists()]
+        verdict, detail = run_detector(s["detector"])
+
+        if merged is None:
+            problems.append(f'{s["id"]}: branch {s["branch"]} does not exist')
+        if merged and missing:
+            problems.append(f'{s["id"]}: merged but missing {", ".join(missing)}')
+        if verdict in ("FAIL", "MISSING"):
+            problems.append(f'{s["id"]}: detector {verdict} - {detail}')
+
+        rows.append({**s, "merged": merged, "missing_files": missing,
+                     "detector_verdict": verdict, "detector_detail": detail})
+
+    suite = subprocess.run([str(PY), "-m", "pytest", "-q", "--no-header"],
+                           capture_output=True, text=True, cwd=ROOT)
+    suite_line = next((l for l in reversed(suite.stdout.splitlines())
+                       if "passed" in l or "failed" in l), "suite did not run")
+    if suite.returncode != 0:
+        problems.append(f"full suite is RED: {suite_line}")
+
+    if as_json:
+        print(json.dumps({"base": base, "slices": rows, "suite": suite_line,
+                          "problems": problems,
+                          "not_built": data["not_built"]}, indent=2))
+        return 1 if problems else 0
+
+    print(f"\n  base: {base}    suite: {suite_line}\n")
+    print(f'  {"":<5}{"merged":<8}{"detector":<10}{"verified":<17}what')
+    print("  " + "-" * 92)
+    for r in rows:
+        m = {True: "yes", False: "NO", None: "??"}[r["merged"]]
+        print(f'  {r["id"]:<5}{m:<8}{r["detector_verdict"]:<10}'
+              f'{r["verified"]:<17}{r["what"][:44]}')
+    print("\n  How much each 'verified' is worth:")
+    for k, v in VERIFY_RANK.items():
+        if any(r["verified"] == k for r in rows):
+            print(f"    {k:<16} {v}")
+    print("\n  Known unproven, per slice:")
+    for r in rows:
+        if r.get("unproven"):
+            print(f'    {r["id"]}: {r["unproven"]}')
+    print("\n  Not built at all:")
+    for n in data["not_built"]:
+        print(f"    - {n}")
+    if problems:
+        print("\n  PROBLEMS - a claim in slices.json is false:")
+        for p in problems:
+            print(f"    ! {p}")
+        print()
+        return 1
+    print("\n  Every claim in slices.json checks out.\n")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

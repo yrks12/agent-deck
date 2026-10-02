@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Direct channel (Developer ID + notarization, hardened runtime, NOT sandboxed).
+     The microphone is the only resource the hardened runtime would otherwise
+     deny. Nothing else, and never get-task-allow in a release. Contract C2. -->
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
+</dict>
+</plist>

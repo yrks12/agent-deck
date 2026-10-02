@@ -1,0 +1,48 @@
+# managed by agent-deck -- RENDERED from deploy/templates/Caddyfile.in by
+# deploy/render.py; edit /etc/agent-deck/deck.toml, not this file. The installer
+# overwrites it only while it carries this line (or is the caddy package default).
+#
+# The public edge (easy-setup plan K10). Only /v1/* (the app's API: roster, SSE
+# streams, the Mac-bridge long-poll) and /healthz reach the deck, which listens
+# on 127.0.0.1 only. Everything else -- the web board, /api, the hooks' surface --
+# answers 404 here and stays box-local (reach the board with ssh -L).
+{
+	@EMAIL_LINE@
+	servers {
+		timeouts {
+			# Slow-header clients are cut; a keep-alive idles out after 5 minutes.
+			# Deliberately NO `write` and NO `read_body`: those are Go's
+			# whole-response / whole-request deadlines and would cut an SSE
+			# stream or a websocket that is meant to stay open for hours.
+			read_header 10s
+			idle 5m
+		}
+	}
+}
+
+@SITE@ {
+	@TLS_LINE@
+	request_body {
+		max_size 10MB
+	}
+	header -Server
+
+	@deck path /v1/* /healthz
+	handle @deck {
+		reverse_proxy 127.0.0.1:@PORT@ {
+			# Every write is flushed at once: SSE (/v1/stream) and the
+			# realtime call events arrive as they happen, not in lumps.
+			flush_interval -1
+			transport http {
+				dial_timeout 5s
+				# The Mac bridge's POST /v1/nodes/{id}/poll holds up to 25 s
+				# before its first byte; 5m leaves room for a slow box. No
+				# read/write timeout: an open stream is not a stuck one.
+				response_header_timeout 5m
+			}
+		}
+	}
+	handle {
+		respond 404
+	}
+}

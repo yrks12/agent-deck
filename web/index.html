@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Deck</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="rail">
+      <div class="brand">
+        <h1>Agent Deck</h1>
+        <nav class="tabs">
+          <a class="tab tab--on" href="/">Deck</a>
+          <a class="tab" href="/feed">Feed</a>
+          <a class="tab" href="/manager">Manager</a>
+        </nav>
+      </div>
+
+      <div class="meters" id="meters"></div>
+      <div class="meters__note" title="Read from an undocumented Anthropic endpoint">plan usage · unofficial</div>
+
+      <div class="counts">
+        <div class="count count--alert" id="count-alert" data-hot="0"><b>0</b><span>needs you</span></div>
+        <div class="count count--work" id="count-work"><b>0</b><span>working</span></div>
+        <div class="count" id="count-sessions"><b>0</b><span>sessions</span></div>
+        <div class="count" id="count-agents"><b>0</b><span>agents</span></div>
+      </div>
+
+      <div class="nav">
+        <span id="clock" class="clock"></span>
+        <div class="link" id="link" data-up="0"><i></i><span>connecting</span></div>
+      </div>
+    </div>
+
+    <section class="floor" id="floor" hidden>
+      <div class="section__head"><h2>The Floor</h2></div>
+      <div class="floor__room"><canvas id="floor-canvas"></canvas></div>
+    </section>
+
+    <section class="desks" id="desks" hidden>
+      <div class="section__head"><h2>Desks</h2></div>
+      <div class="desks__row" id="desks-row"></div>
+    </section>
+
+    <div id="deck"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="/static/mates.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

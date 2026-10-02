@@ -1,0 +1,44 @@
+# The shaliach.me landing page: publishes docs/site to GitHub Pages.
+# Runs only in the public repository (the custom domain lives there).
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["docs/site/**", "install.sh", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.event.repository.name == 'shaliach'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      # https://shaliach.me/install is the real installer: copied at build time so
+      # the published file can never drift (tests/test_site_install.py guards the
+      # committed copy too).
+      - run: cp install.sh docs/site/install
+      # The videos page's films and posters live on the site-videos release (kept out
+      # of git). Replace one: gh release upload site-videos <file> --clobber, then
+      # re-run this workflow.
+      - run: gh release download site-videos --repo "$GITHUB_REPOSITORY" -D docs/site/videos
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/site
+      - id: deployment
+        uses: actions/deploy-pages@v4

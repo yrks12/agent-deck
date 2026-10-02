@@ -1,0 +1,1 @@
+# Retired: the UI tests are built by the shipping project, macos/App/project.yml (target DeckUITests, scheme AgentDeck).

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shaliach — Events</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .ev-main { padding: 16px; overflow: auto; flex: 1; min-width: 0; }
+    .ev-main h2 { margin: 8px 0 12px; font-size: 15px; }
+    .ev-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .ev-table th, .ev-table td { text-align: left; padding: 6px 8px;
+      border-bottom: 1px solid rgba(127,127,127,.2); vertical-align: top; }
+    .ev-table td.sum { overflow-wrap: anywhere; }
+    .ev-state--unrouted, .ev-state--failed { color: #c0392b; }
+    .ev-routes input { width: 100%; box-sizing: border-box; font: inherit; }
+    .ev-bar { display: flex; gap: 8px; margin: 10px 0 24px; align-items: center; }
+    .ev-note { opacity: .7; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="rail">
+      <div class="brand">
+        <h1>Shaliach</h1>
+        <nav class="tabs">
+          <a class="tab" href="/">Deck</a>
+          <a class="tab" href="/feed">Feed</a>
+          <a class="tab" href="/manager">Manager</a>
+          <a class="tab" href="/#money">Money</a>
+          <a class="tab" href="/#standing">Standing</a>
+          <a class="tab tab--on" href="/events">Events</a>
+        </nav>
+      </div>
+    </div>
+    <main class="ev-main">
+      <h2>Routing table</h2>
+      <p class="ev-note">First match wins. Account and kind take * globs.
+        An event no route matches is kept here as unrouted.</p>
+      <table class="ev-table ev-routes">
+        <thead><tr><th>Source</th><th>Account</th><th>Kind</th><th>Desk</th><th></th></tr></thead>
+        <tbody id="routes"></tbody>
+      </table>
+      <div class="ev-bar">
+        <button id="add-route" type="button">Add route</button>
+        <button id="save-routes" type="button">Save</button>
+        <span id="routes-said" class="ev-note"></span>
+      </div>
+      <h2>Recent events</h2>
+      <table class="ev-table">
+        <thead><tr><th>When</th><th>Source</th><th>Summary</th><th>Desk</th><th>State</th></tr></thead>
+        <tbody id="events"></tbody>
+      </table>
+    </main>
+  </div>
+  <script src="/static/events.js"></script>
+</body>
+</html>

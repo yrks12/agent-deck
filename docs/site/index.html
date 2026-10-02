@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shaliach: always-on Claude Code agents on your own Mac or server</title>
+<meta name="description" content="Text one agent. It hires a team of always-on Claude Code agents on your own Mac or server, each with its own browser, run from your phone. Source-available.">
+<link rel="canonical" href="https://shaliach.me/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Shaliach">
+<meta property="og:title" content="Shaliach: send one, a whole team goes">
+<meta property="og:description" content="Text one agent. It hires the team, gives each one its own computer, and asks you before anything goes out the door.">
+<meta property="og:url" content="https://shaliach.me/">
+<meta property="og:image" content="https://shaliach.me/media/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Shaliach: your AI emissaries, a whole team that works for you. A phone shows Atlas planning the week.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Shaliach: send one, a whole team goes">
+<meta name="twitter:description" content="Text one agent. It hires the team, gives each one its own computer, and asks you before anything goes out the door.">
+<meta name="twitter:image" content="https://shaliach.me/media/og.jpg">
+<link rel="alternate" type="text/plain" href="https://shaliach.me/llms.txt" title="llms.txt">
+<meta name="theme-color" content="#f6f1e7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14110e" media="(prefers-color-scheme: dark)">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,800;1,9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,800;1,9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap"></noscript>
+<style>
+:root{--bg:#f6f1e7;--fg:#1d1a16;--muted:#6b6458;--card:#fffdf8;--line:#e0d7c4;--accent:#b4491f;--accent-fg:#fff;--code:#201c17;--code-fg:#f3e9d2;--bubble:#fffdf8}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#14110e;--fg:#f1eadb;--muted:#a59d8c;--card:#1c1814;--line:#2f2922;--accent:#e8783f;--accent-fg:#14110e;--code:#0c0a08;--code-fg:#f3e9d2;--bubble:#241f1a}}
+:root[data-theme=dark]{--bg:#14110e;--fg:#f1eadb;--muted:#a59d8c;--card:#1c1814;--line:#2f2922;--accent:#e8783f;--accent-fg:#14110e;--code:#0c0a08;--code-fg:#f3e9d2;--bubble:#241f1a}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.6 Inter,system-ui,sans-serif}
+main{max-width:900px;margin:0 auto;padding:0 16px}
+.top{display:flex;align-items:center;gap:10px;padding:14px 0 0;font-size:.95rem}
+.top .brand{display:flex;align-items:center;gap:8px;font:600 1.05rem Fraunces,Georgia,serif;color:var(--fg);text-decoration:none;margin-right:auto}
+.top .brand .face{width:28px;height:28px}
+.top a{color:var(--fg)}
+.theme{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:999px;width:36px;height:36px;cursor:pointer;font-size:1rem;line-height:1}
+.hero{padding:40px 0 28px}
+.he{font:500 .9rem "IBM Plex Mono",monospace;color:var(--accent);letter-spacing:.06em;margin:0 0 12px}
+h1{font:800 clamp(3.2rem,13vw,6.5rem)/.95 Fraunces,Georgia,serif;margin:0 0 18px;letter-spacing:-.03em}
+.tag{font:600 clamp(1.4rem,4.8vw,2.1rem)/1.2 Fraunces,Georgia,serif;margin:0 0 18px}
+.sub{color:var(--muted);max-width:62ch;margin:0 0 26px}
+.crew{display:flex;align-items:center;gap:10px;margin:0 0 26px;flex-wrap:wrap}
+.crew .lead{width:76px;height:76px}
+.crew .face{width:44px;height:44px}
+.say{background:var(--bubble);border:1px solid var(--line);border-radius:4px 16px 16px 16px;padding:10px 14px;font-size:.95rem;flex:1 1 260px;max-width:44ch;margin:0 0 0 6px}
+.cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn{display:inline-block;background:var(--accent);color:var(--accent-fg);font-weight:600;font-size:1.1rem;padding:14px 24px;border-radius:12px;text-decoration:none}
+.btn:hover{filter:brightness(1.08)}
+.link{color:var(--fg);font-weight:500;padding:14px 8px}
+.film{position:relative;margin:8px 0 36px;border-radius:16px;overflow:hidden;background:#0b0a12;border:1px solid var(--line)}
+.film video{display:block;width:100%;height:auto;max-height:80vh;margin:0 auto}
+.sound{position:absolute;right:14px;bottom:14px;border:0;border-radius:999px;padding:10px 16px;font:600 .95rem Inter,sans-serif;background:rgba(0,0,0,.65);color:#fff;cursor:pointer}
+.sound[hidden]{display:none}
+h2{font:600 1.7rem/1.2 Fraunces,Georgia,serif;margin:0 0 14px}
+section{padding:36px 0;border-top:1px solid var(--line)}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+.card h3{margin:0 0 6px;font:600 1.12rem/1.3 Fraunces,Georgia,serif}
+.card p{margin:0;color:var(--muted);font-size:.97rem}
+.steps{list-style:none;padding:0;margin:0;display:grid;gap:12px}
+.steps li{display:flex;gap:14px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.steps .face{width:52px;height:52px;flex:none}
+.steps b{display:block;font:600 1.08rem/1.3 Fraunces,Georgia,serif}
+.steps span{color:var(--muted);font-size:.96rem}
+.cast{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.cast .card{display:flex;gap:14px;align-items:flex-start}
+.cast .face{width:64px;height:64px;flex:none}
+.cast .role{display:block;font:500 .8rem "IBM Plex Mono",monospace;color:var(--accent);letter-spacing:.04em;margin:0 0 4px}
+.face .eyes{transform-box:fill-box;transform-origin:center;animation:blink 6s infinite;animation-delay:var(--d,0s)}
+@keyframes blink{0%,95%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+.bob{animation:bob 4.5s ease-in-out infinite;animation-delay:var(--d,0s)}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@media (prefers-reduced-motion:reduce){.face .eyes,.bob{animation:none}}
+blockquote{margin:0 0 16px;padding:0 0 0 18px;border-left:3px solid var(--accent);font:italic 600 1.35rem/1.35 Fraunces,Georgia,serif}
+blockquote cite{display:block;margin-top:6px;font:400 .85rem Inter,sans-serif;color:var(--muted)}
+.nots{list-style:none;padding:0;margin:0}
+.nots li{padding:10px 0;border-bottom:1px dashed var(--line)}
+.nots b{font-family:Fraunces,Georgia,serif}
+.step{margin:0 0 6px;font-weight:600}
+pre{background:var(--code);color:var(--code-fg);border-radius:12px;padding:16px;overflow-x:auto;font:400 .9rem/1.5 "IBM Plex Mono",monospace;margin:0 0 22px;user-select:all}
+.note{color:var(--muted);font-size:.95rem}
+.qa{border-bottom:1px solid var(--line);padding:4px 0}
+.qa summary{cursor:pointer;list-style:none;padding:10px 0;display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.qa summary::-webkit-details-marker{display:none}
+.qa summary h3{display:inline;font:600 1.1rem/1.35 Fraunces,Georgia,serif}
+.qa summary::after{content:"+";flex:none;color:var(--accent);font-weight:600}
+.qa[open] summary::after{content:"\2212"}
+.qa p{margin:0 0 14px;color:var(--muted)}
+code{font:400 .88em "IBM Plex Mono",monospace}
+footer{border-top:1px solid var(--line);padding:28px 0 48px;color:var(--muted);font-size:.9rem}
+footer a{color:var(--muted)}
+a{color:var(--accent)}
+</style>
+<script src="stats.js" defer></script>
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "Organization",
+   "@id": "https://shaliach.me/#org",
+   "name": "Shaliach",
+   "url": "https://shaliach.me/",
+   "logo": "https://shaliach.me/apple-touch-icon.png",
+   "sameAs": [
+    "https://github.com/yrks12/shaliach"
+   ]
+  },
+  {
+   "@type": "WebSite",
+   "@id": "https://shaliach.me/#site",
+   "name": "Shaliach",
+   "url": "https://shaliach.me/",
+   "publisher": {
+    "@id": "https://shaliach.me/#org"
+   }
+  },
+  {
+   "@type": "SoftwareApplication",
+   "@id": "https://shaliach.me/#app",
+   "name": "Shaliach",
+   "description": "A team of always-on Claude Code agents on your own Mac or server. A chief-of-staff agent, Atlas, hires and briefs the team; each agent has its own browser and terminal; risky steps wait for your approval on your phone.",
+   "applicationCategory": "BusinessApplication",
+   "applicationSubCategory": "AI agents",
+   "operatingSystem": "macOS 14+, Ubuntu 24.04, Debian 12, iOS",
+   "url": "https://shaliach.me/",
+   "downloadUrl": "https://shaliach.me/install",
+   "installUrl": "https://shaliach.me/#install",
+   "codeRepository": "https://github.com/yrks12/shaliach",
+   "license": "https://polyformproject.org/licenses/noncommercial/1.0.0/",
+   "image": "https://shaliach.me/media/og.jpg",
+   "screenshot": "https://shaliach.me/media/hero-16x9.jpg",
+   "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+    "description": "Free for noncommercial use; business licence available."
+   },
+   "publisher": {
+    "@id": "https://shaliach.me/#org"
+   },
+   "featureList": [
+    "A chief-of-staff agent (Atlas) that hires, briefs and runs a team of agents",
+    "Each agent has its own browser and terminal; watch live and take over",
+    "Approvals on your phone before publishing, paying or logging in",
+    "Mac control the agents use only while you allow it, stopped with one shortcut",
+    "Team memory: correct one agent and the whole team remembers",
+    "Mac app, iPhone app, web board and HTTP + SSE API",
+    "Self-hosted on your own Mac or server, under your own Claude plan"
+   ]
+  },
+  {
+   "@type": "VideoObject",
+   "name": "Shaliach in 35 seconds",
+   "description": "You text Atlas, Atlas hires a team, each agent works on its own computer, and asks on your phone before anything goes live.",
+   "thumbnailUrl": [
+    "https://shaliach.me/media/hero-16x9.jpg"
+   ],
+   "uploadDate": "2026-10-02T03:25:14-04:00",
+   "duration": "PT35S",
+   "contentUrl": "https://shaliach.me/media/hero-16x9.mp4",
+   "embedUrl": "https://shaliach.me/"
+  },
+  {
+   "@type": "FAQPage",
+   "@id": "https://shaliach.me/#faq",
+   "mainEntity": [
+    {
+     "@type": "Question",
+     "name": "What is Shaliach?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Shaliach is a team of always-on Claude Code agents that runs on your own Mac or server. You text one agent, Atlas, the chief of staff; Atlas hires the agents the job needs, gives each one its own browser and terminal, and asks you on your phone before anything risky happens. There is a Mac app, an iPhone app and a web board."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Can I run Claude Code agents from my phone?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. You chat with Atlas and the team from the iPhone app (or the web board in any browser), approve risky steps with one tap, and watch any agent's screen live. The iPhone app builds from source with a free Apple ID; there is no Android app yet."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Where do my messages, code and files go?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "To your machine and nowhere else we run. Shaliach has no cloud of its own. Threads, files and agent workspaces live on the server or Mac you install it on. The agents talk to Anthropic the same way Claude Code always does, under your account. Voice calls are optional and go to OpenAI only if you add your own API key."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Does it touch my Claude login? Is this within Anthropic's terms?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Every agent is the unmodified claude CLI. You sign in with Claude's own claude auth login; the CLI keeps and refreshes its login, and Shaliach never stores your Claude token. Nothing is resold or pooled. Some questions about always-on use on consumer plans have no written answer yet, and we list them openly in docs/terms-questions.md. If you run it for a business, an API key under Anthropic's commercial terms is the safer choice."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "What will it cost me in tokens?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Shaliach is free for personal use. The agents use your Claude plan, exactly like Claude Code sessions you start yourself. Five agents working at once use it about five times as fast as one. Start with one or two agents and watch your usage on the first day. We have not published a \"typical cost\" because we have not measured one we trust."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Which platforms work?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Server: Ubuntu 24.04 or Debian 12 (x86_64 or arm64), or macOS. Mac app: macOS 14+, Apple silicon. iPhone app: builds from source with a free Apple ID (one command; re-run it every 7 days to re-sign). Any browser: the web board, through an SSH tunnel. There is no Android app yet and no Windows support."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "What can the agents do on my machine?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Anything their Unix user can do. They run Claude Code in bypassPermissions mode so they do not stall on prompts. The approval cards (Allow once / Always / Deny) stop risky steps, but they are a convenience, not a sandbox. On a server with agent desktops on, the service user is in the docker group, which is root-equivalent. So use a VPS that does nothing else. The Mac bridge, which lets agents run jobs on your Mac, is off until you turn it on, logs every job, and can be stopped from the menu bar."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "What is exposed to the internet, and how is it authenticated?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "The deck binds 127.0.0.1 only. On a public server, Caddy passes only /v1 and /healthz over HTTPS on 443, and ufw allows only SSH and 443. Every /v1 call needs a bearer token, compared in constant time; with no token set, the API refuses everything. Each paired phone or Mac gets its own token, stored only as a hash and revocable. Wrong guesses are rate limited. Want nothing public at all? Install with --ssh-tunnel or use Tailscale. Secrets are plain files with 0600 permissions, not encrypted at rest. Full detail: docs/security.md."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Is it open source?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "No. It is source-available under the PolyForm Noncommercial License 1.0.0. You can read every line, run it and change it for any noncommercial use. Running it for a company needs a business licence; ask on GitHub."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Did an AI write this?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "A lot of the code, yes: most of it was written by Claude Code agents, many of them running inside Shaliach, with a human designing, reviewing and testing every change. If something here reads wrong, open an issue and it gets fixed."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "How is this different from OpenAI dots, Meta Muse or Grok Bot?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Those rent you an agent in their cloud, with no setup. Shaliach is a team of agents on hardware you own, on the Claude plan you already pay for, and you can read the code that runs them. The trade-off is real: you run one install command and look after a server."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Is this affiliated with Anthropic?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "No. It is an independent project that runs Claude Code. \"Claude\" and \"Claude Code\" are Anthropic's trademarks, used here only to describe compatibility."
+     }
+    }
+   ]
+  }
+ ]
+}
+</script>
+</head>
+<body>
+<main>
+<nav class="top" aria-label="Site">
+  <a class="brand" href="./"><svg class="face" style="--d:1.7s" viewBox="0 0 100 100" role="img" aria-label="The Shaliach face: a mint-green rounded square with dot eyes and a blush"><defs><linearGradient id="gmascot-nav" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4cc7a7"/><stop offset=".5" stop-color="#1ab88f"/><stop offset="1" stop-color="#169e7b"/></linearGradient></defs><rect width="100" height="100" rx="42" fill="url(#gmascot-nav)"/><ellipse cx="36" cy="22" rx="22" ry="11" fill="#fff" opacity=".16" transform="rotate(-24 36 22)"/><rect x="15.0" y="61.5" width="16" height="9" rx="4.5" fill="#ff7380" opacity=".55"/><rect x="69.0" y="61.5" width="16" height="9" rx="4.5" fill="#ff7380" opacity=".55"/><g class="eyes"><rect x="29.5" y="37.2" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="38.0" cy="42.2" r="2.3" fill="#fff" opacity=".9"/><rect x="63.5" y="37.2" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="72.0" cy="42.2" r="2.3" fill="#fff" opacity=".9"/></g></svg>Shaliach</a>
+  <a href="alternatives/">Alternatives</a>
+  <a href="videos.html">Videos</a>
+  <a href="#faq">FAQ</a>
+  <button class="theme" id="theme" type="button" aria-label="Switch light or dark mode">&#9680;</button>
+</nav>
+<header class="hero">
+  <p class="he">שָׁלִיחַ &middot; shaliach &middot; n. one you send to act in your name</p>
+  <h1>Shaliach</h1>
+  <p class="tag">Send one. A whole team goes.</p>
+  <div class="crew">
+    <span class="bob"><svg class="face lead" style="--d:3.4s" viewBox="0 0 100 100" role="img" aria-label="Atlas, the chief of staff: a sun-yellow rounded square with two dot eyes"><defs><linearGradient id="gatlas-hero" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fbd358"/><stop offset=".5" stop-color="#fac729"/><stop offset="1" stop-color="#d7ab23"/></linearGradient></defs><rect width="100" height="100" rx="42" fill="url(#gatlas-hero)"/><ellipse cx="36" cy="22" rx="22" ry="11" fill="#fff" opacity=".16" transform="rotate(-24 36 22)"/><g class="eyes"><rect x="29.5" y="37.2" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="38.0" cy="42.2" r="2.3" fill="#fff" opacity=".9"/><rect x="63.5" y="37.2" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="72.0" cy="42.2" r="2.3" fill="#fff" opacity=".9"/></g></svg></span>
+    <span class="bob" style="--d:.6s"><svg class="face" style="--d:5.1s" viewBox="0 0 100 100" role="img" aria-label="Growth: a lime-green cloud with two dot eyes"><defs><linearGradient id="ggrowth-hero" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#8ccf6c"/><stop offset=".5" stop-color="#6bc242"/><stop offset="1" stop-color="#5ca739"/></linearGradient></defs><g fill="url(#ggrowth-hero)"><rect y="40" width="100" height="56" rx="28"/><circle cx="30" cy="44" r="24"/><circle cx="57" cy="36" r="31"/><circle cx="79" cy="52" r="20"/></g><ellipse cx="36" cy="22" rx="22" ry="11" fill="#fff" opacity=".16" transform="rotate(-24 36 22)"/><g class="eyes"><rect x="25.4" y="50.4" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="33.9" cy="55.4" r="2.3" fill="#fff" opacity=".9"/><rect x="68.4" y="50.4" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="76.9" cy="55.4" r="2.3" fill="#fff" opacity=".9"/></g></svg></span>
+    <span class="bob" style="--d:1.2s"><svg class="face" style="--d:0.8s" viewBox="0 0 100 100" role="img" aria-label="Social: a blue rounded triangle with two dot eyes"><defs><linearGradient id="gsocial-hero" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#60a0fb"/><stop offset=".5" stop-color="#3385fa"/><stop offset="1" stop-color="#2c72d7"/></linearGradient></defs><polygon points="50,12 89,86 11,86" fill="url(#gsocial-hero)" stroke="url(#gsocial-hero)" stroke-width="18" stroke-linejoin="round"/><ellipse cx="36" cy="22" rx="22" ry="11" fill="#fff" opacity=".16" transform="rotate(-24 36 22)"/><g class="eyes"><rect x="22.2" y="54.0" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="30.8" cy="59.0" r="2.3" fill="#fff" opacity=".9"/><rect x="65.2" y="54.0" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="73.8" cy="59.0" r="2.3" fill="#fff" opacity=".9"/></g></svg></span>
+    <span class="bob" style="--d:1.8s"><svg class="face" style="--d:2.5s" viewBox="0 0 100 100" role="img" aria-label="Web: a coral hexagon with two dot eyes"><defs><linearGradient id="gweb-hero" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fb8464"/><stop offset=".5" stop-color="#fa6138"/><stop offset="1" stop-color="#d75330"/></linearGradient></defs><polygon points="50.0,7.0 87.2,28.5 87.2,71.5 50.0,93.0 12.8,71.5 12.8,28.5" fill="url(#gweb-hero)" stroke="url(#gweb-hero)" stroke-width="14" stroke-linejoin="round"/><ellipse cx="36" cy="22" rx="22" ry="11" fill="#fff" opacity=".16" transform="rotate(-24 36 22)"/><g class="eyes"><rect x="28.5" y="37.2" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="37.0" cy="42.2" r="2.3" fill="#fff" opacity=".9"/><rect x="53.5" y="37.2" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="62.0" cy="42.2" r="2.3" fill="#fff" opacity=".9"/></g></svg></span>
+    <p class="say"><b>Atlas:</b> On it. Growth plans the week, Social does the posts, and I'm hiring Web for the blog.</p>
+  </div>
+  <p class="sub">It's 11 at night and you are still the one chasing receipts, answering "where's my order?" and typing the same details into five portals. Shaliach gives you emissaries: Claude Code agents on your own Mac or server, run by a chief of staff called Atlas. You text Atlas. Atlas hires the team, hands out the work, and checks with you before anything goes out the door.</p>
+  <div class="cta">
+    <a class="btn" href="#install">Hire your first emissary</a>
+    <a class="link" href="videos.html">Watch the videos &rarr;</a>
+    <a class="link" href="https://github.com/yrks12/shaliach">GitHub</a>
+  </div>
+</header>
+
+<!-- The hero film. To swap it for a new render: scripts/site-hero.sh <16x9.mp4> <vertical.mp4>,
+     which rewrites the four files in docs/site/media/ that this block names. Nothing else changes. -->
+<div class="film">
+  <video id="film" autoplay muted loop playsinline preload="metadata" poster="media/hero-16x9.jpg"
+         data-wide="media/hero-16x9" data-tall="media/hero-9x16"
+         aria-label="A 35-second tour: you text Atlas, Atlas hires a team, each agent works on its own computer, and asks on your phone before anything goes live">
+    <source src="media/hero-16x9.mp4" type="video/mp4">
+  </video>
+  <button class="sound" id="sound" type="button">&#9654; Play with sound</button>
+</div>
+
+<section>
+  <h2>The job description is two thousand years old</h2>
+  <blockquote>"A person's emissary is as the person himself."<cite>Mishnah, Berakhot 5:5</cite></blockquote>
+  <p>That is a lot of trust to hand to software. So ours carry your name, do the legwork, and still come back to ask before they sign anything.</p>
+</section>
+
+<section id="how">
+  <h2>How it works</h2>
+  <ol class="steps">
+    <li><svg class="face" style="--d:4.2s" viewBox="0 0 100 100" role="img" aria-label="Atlas, the chief of staff: a sun-yellow rounded square with two dot eyes"><defs><linearGradient id="gatlas-s1" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fbd358"/><stop offset=".5" stop-color="#fac729"/><stop offset="1" stop-color="#d7ab23"/></linearGradient></defs><rect width="100" height="100" rx="42" fill="url(#gatlas-s1)"/><ellipse cx="36" cy="22" rx="22" ry="11" fill="#fff" opacity=".16" transform="rotate(-24 36 22)"/><g class="eyes"><rect x="29.5" y="37.2" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="38.0" cy="42.2" r="2.3" fill="#fff" opacity=".9"/><rect x="63.5" y="37.2" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="72.0" cy="42.2" r="2.3" fill="#fff" opacity=".9"/></g></svg><div><b>1. You text Atlas.</b><span>From the iPhone app, the Mac app or the web board. One line is enough: "Get me more customers this week."</span></div></li>
+    <li><svg class="face" style="--d:5.9s" viewBox="0 0 100 100" role="img" aria-label="Growth: a lime-green cloud with two dot eyes"><defs><linearGradient id="ggrowth-s2" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#8ccf6c"/><stop offset=".5" stop-color="#6bc242"/><stop offset="1" stop-color="#5ca739"/></linearGradient></defs><g fill="url(#ggrowth-s2)"><rect y="40" width="100" height="56" rx="28"/><circle cx="30" cy="44" r="24"/><circle cx="57" cy="36" r="31"/><circle cx="79" cy="52" r="20"/></g><ellipse cx="36" cy="22" rx="22" ry="11" fill="#fff" opacity=".16" transform="rotate(-24 36 22)"/><g class="eyes"><rect x="25.4" y="50.4" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="33.9" cy="55.4" r="2.3" fill="#fff" opacity=".9"/><rect x="68.4" y="50.4" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="76.9" cy="55.4" r="2.3" fill="#fff" opacity=".9"/></g></svg><div><b>2. Atlas hires the team.</b><span>It picks the agents the job needs, briefs each one, and folds their chatter into one thread you can read.</span></div></li>
+    <li><svg class="face" style="--d:1.6s" viewBox="0 0 100 100" role="img" aria-label="Web: a coral hexagon with two dot eyes"><defs><linearGradient id="gweb-s3" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fb8464"/><stop offset=".5" stop-color="#fa6138"/><stop offset="1" stop-color="#d75330"/></linearGradient></defs><polygon points="50.0,7.0 87.2,28.5 87.2,71.5 50.0,93.0 12.8,71.5 12.8,28.5" fill="url(#gweb-s3)" stroke="url(#gweb-s3)" stroke-width="14" stroke-linejoin="round"/><ellipse cx="36" cy="22" rx="22" ry="11" fill="#fff" opacity=".16" transform="rotate(-24 36 22)"/><g class="eyes"><rect x="28.5" y="37.2" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="37.0" cy="42.2" r="2.3" fill="#fff" opacity=".9"/><rect x="53.5" y="37.2" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="62.0" cy="42.2" r="2.3" fill="#fff" opacity=".9"/></g></svg><div><b>3. Each one gets its own computer.</b><span>A browser and a terminal per agent. Watch any screen live and take the wheel when you like.</span></div></li>
+    <li><svg class="face" style="--d:3.3s" viewBox="0 0 100 100" role="img" aria-label="Chaser: an orange teardrop with two dot eyes and a blush"><defs><linearGradient id="gchaser-s4" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffaf4c"/><stop offset=".5" stop-color="#ff991a"/><stop offset="1" stop-color="#db8416"/></linearGradient></defs><path d="M50 2C62 22 95 38 95 62C95 84 74 98 50 98C26 98 5 84 5 62C5 38 38 22 50 2Z" fill="url(#gchaser-s4)"/><ellipse cx="36" cy="22" rx="22" ry="11" fill="#fff" opacity=".16" transform="rotate(-24 36 22)"/><rect x="15.0" y="73.5" width="16" height="9" rx="4.5" fill="#ff7380" opacity=".55"/><rect x="69.0" y="73.5" width="16" height="9" rx="4.5" fill="#ff7380" opacity=".55"/><g class="eyes"><rect x="23.6" y="52.4" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="32.1" cy="57.4" r="2.3" fill="#fff" opacity=".9"/><rect x="57.6" y="52.4" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="66.1" cy="57.4" r="2.3" fill="#fff" opacity=".9"/></g></svg><div><b>4. Anything risky waits for your tap.</b><span>Publishing, paying, logging in: Allow once, Always, or Not today, from your phone.</span></div></li>
+  </ol>
+</section>
+
+<section id="team">
+  <h2>Meet the team</h2>
+  <div class="cast">
+    <div class="card"><svg class="face" style="--d:5.0s" viewBox="0 0 100 100" role="img" aria-label="Atlas, the chief of staff: a sun-yellow rounded square with two dot eyes"><defs><linearGradient id="gatlas-c1" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fbd358"/><stop offset=".5" stop-color="#fac729"/><stop offset="1" stop-color="#d7ab23"/></linearGradient></defs><rect width="100" height="100" rx="42" fill="url(#gatlas-c1)"/><ellipse cx="36" cy="22" rx="22" ry="11" fill="#fff" opacity=".16" transform="rotate(-24 36 22)"/><g class="eyes"><rect x="29.5" y="37.2" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="38.0" cy="42.2" r="2.3" fill="#fff" opacity=".9"/><rect x="63.5" y="37.2" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="72.0" cy="42.2" r="2.3" fill="#fff" opacity=".9"/></g></svg><div><span class="role">CHIEF OF STAFF</span><h3>Atlas</h3><p>Hires, briefs and turns forty messages into one you can read. Will still ask before anything leaves the building. Yes, even that.</p></div></div>
+    <div class="card"><svg class="face" style="--d:0.7s" viewBox="0 0 100 100" role="img" aria-label="Web: a coral hexagon with two dot eyes"><defs><linearGradient id="gweb-c2" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fb8464"/><stop offset=".5" stop-color="#fa6138"/><stop offset="1" stop-color="#d75330"/></linearGradient></defs><polygon points="50.0,7.0 87.2,28.5 87.2,71.5 50.0,93.0 12.8,71.5 12.8,28.5" fill="url(#gweb-c2)" stroke="url(#gweb-c2)" stroke-width="14" stroke-linejoin="round"/><ellipse cx="36" cy="22" rx="22" ry="11" fill="#fff" opacity=".16" transform="rotate(-24 36 22)"/><g class="eyes"><rect x="28.5" y="37.2" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="37.0" cy="42.2" r="2.3" fill="#fff" opacity=".9"/><rect x="53.5" y="37.2" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="62.0" cy="42.2" r="2.3" fill="#fff" opacity=".9"/></g></svg><div><span class="role">BUILDS YOUR PAGES</span><h3>Web</h3><p>Writes the post in its own browser, shows you the preview, then waits for your tap like it's holding a door.</p></div></div>
+    <div class="card"><svg class="face" style="--d:2.4s" viewBox="0 0 100 100" role="img" aria-label="Social: a blue rounded triangle with two dot eyes"><defs><linearGradient id="gsocial-c3" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#60a0fb"/><stop offset=".5" stop-color="#3385fa"/><stop offset="1" stop-color="#2c72d7"/></linearGradient></defs><polygon points="50,12 89,86 11,86" fill="url(#gsocial-c3)" stroke="url(#gsocial-c3)" stroke-width="18" stroke-linejoin="round"/><ellipse cx="36" cy="22" rx="22" ry="11" fill="#fff" opacity=".16" transform="rotate(-24 36 22)"/><g class="eyes"><rect x="22.2" y="54.0" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="30.8" cy="59.0" r="2.3" fill="#fff" opacity=".9"/><rect x="65.2" y="54.0" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="73.8" cy="59.0" r="2.3" fill="#fff" opacity=".9"/></g></svg><div><span class="role">DRAFTS THE POSTS</span><h3>Social</h3><p>You said "never post before 7am" once. Social wrote it down. So did everyone else.</p></div></div>
+    <div class="card"><svg class="face" style="--d:4.1s" viewBox="0 0 100 100" role="img" aria-label="Growth: a lime-green cloud with two dot eyes"><defs><linearGradient id="ggrowth-c4" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#8ccf6c"/><stop offset=".5" stop-color="#6bc242"/><stop offset="1" stop-color="#5ca739"/></linearGradient></defs><g fill="url(#ggrowth-c4)"><rect y="40" width="100" height="56" rx="28"/><circle cx="30" cy="44" r="24"/><circle cx="57" cy="36" r="31"/><circle cx="79" cy="52" r="20"/></g><ellipse cx="36" cy="22" rx="22" ry="11" fill="#fff" opacity=".16" transform="rotate(-24 36 22)"/><g class="eyes"><rect x="25.4" y="50.4" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="33.9" cy="55.4" r="2.3" fill="#fff" opacity=".9"/><rect x="68.4" y="50.4" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="76.9" cy="55.4" r="2.3" fill="#fff" opacity=".9"/></g></svg><div><span class="role">FINDS THE CUSTOMERS</span><h3>Growth</h3><p>Found 20 offices near the caf&eacute; that order lunch. Drafted 20 emails. Sent none until you said so.</p></div></div>
+    <div class="card"><svg class="face" style="--d:5.8s" viewBox="0 0 100 100" role="img" aria-label="Chaser: an orange teardrop with two dot eyes and a blush"><defs><linearGradient id="gchaser-c5" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffaf4c"/><stop offset=".5" stop-color="#ff991a"/><stop offset="1" stop-color="#db8416"/></linearGradient></defs><path d="M50 2C62 22 95 38 95 62C95 84 74 98 50 98C26 98 5 84 5 62C5 38 38 22 50 2Z" fill="url(#gchaser-c5)"/><ellipse cx="36" cy="22" rx="22" ry="11" fill="#fff" opacity=".16" transform="rotate(-24 36 22)"/><rect x="15.0" y="73.5" width="16" height="9" rx="4.5" fill="#ff7380" opacity=".55"/><rect x="69.0" y="73.5" width="16" height="9" rx="4.5" fill="#ff7380" opacity=".55"/><g class="eyes"><rect x="23.6" y="52.4" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="32.1" cy="57.4" r="2.3" fill="#fff" opacity=".9"/><rect x="57.6" y="52.4" width="12.5" height="20" rx="6.25" fill="#141221"/><circle cx="66.1" cy="57.4" r="2.3" fill="#fff" opacity=".9"/></g></svg><div><span class="role">CHASES THE RECEIPTS</span><h3>Chaser</h3><p>Polite on the first reminder. Still polite on the fifth. Frankly, more patient than you.</p></div></div>
+  </div>
+  <p class="note">These are the agents from the app's built-in demo, a made-up caf&eacute;. Yours are whoever Atlas hires, and each one can pick its own shape and colour.</p>
+</section>
+
+<section>
+  <h2>What your emissaries actually do</h2>
+  <div class="grid">
+    <div class="card"><h3>You text one. It hires the rest.</h3><p>Atlas, your chief of staff, hires the agents the job needs, briefs each one and folds their back-and-forth into one thread you can actually read.</p></div>
+    <div class="card"><h3>Their own computers, not yours.</h3><p>Every agent gets its own browser and terminal. Watch any screen live, and take the wheel whenever you like.</p></div>
+    <div class="card"><h3>Nothing goes out without your nod.</h3><p>Publishing, paying, logging in: it stops and asks on your phone. Allow once, always, or not today.</p></div>
+    <div class="card"><h3>Tell them once.</h3><p>Correct one agent and the whole team writes it down. "Never post before 7am" stays never.</p></div>
+    <div class="card"><h3>They come back with the goods.</h3><p>Videos, PDFs and screenshots land in the chat, not in a folder you will never open again.</p></div>
+    <div class="card"><h3>On your turf.</h3><p>Your Mac or your own server, your Claude plan. Shaliach never stores your Claude token.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>What a shaliach is not</h2>
+  <ul class="nots">
+    <li><b>Not a chatbot with opinions.</b> It doesn't tell you what you could do. It opens a browser and does it.</li>
+    <li><b>Not someone else's cloud.</b> It runs on a machine you own, under your own Claude account.</li>
+    <li><b>Not unsupervised.</b> Anything risky waits for your tap, from the Mac app or the iPhone app.</li>
+    <li><b>Not a black box.</b> The source is on GitHub. Read every line before you hand it the keys.</li>
+  </ul>
+</section>
+
+<section id="install">
+  <h2>Send for one</h2>
+  <p class="step">1. Your server or your Mac</p>
+  <pre>curl -fsSL https://shaliach.me/install | sh</pre>
+  <p class="step">2. The Mac app (macOS 14+, Apple silicon)</p>
+  <pre>curl -fsSL https://raw.githubusercontent.com/yrks12/shaliach/main/scripts/install-mac.sh | bash</pre>
+  <p class="note">The installer says what it is about to do before it does it, and running it again upgrades: your token, sign-in and paired devices stay put. Prefer to read first? <a href="install">Here it is</a>. Every agent is a real Claude Code session on your own Claude account.</p>
+</section>
+
+<section id="faq">
+  <h2>Questions people ask</h2>
+  <details class="qa"><summary><h3>What is Shaliach?</h3></summary><p>Shaliach is a team of always-on Claude Code agents that runs on your own Mac or server. You text one agent, Atlas, the chief of staff; Atlas hires the agents the job needs, gives each one its own browser and terminal, and asks you on your phone before anything risky happens. There is a Mac app, an iPhone app and a web board.</p></details>
+  <details class="qa"><summary><h3>Can I run Claude Code agents from my phone?</h3></summary><p>Yes. You chat with Atlas and the team from the iPhone app (or the web board in any browser), approve risky steps with one tap, and watch any agent's screen live. The iPhone app builds from source with a free Apple ID; there is no Android app yet.</p></details>
+  <details class="qa"><summary><h3>Where do my messages, code and files go?</h3></summary><p>To your machine and nowhere else we run. Shaliach has no cloud of its own. Threads, files and agent workspaces live on the server or Mac you install it on. The agents talk to Anthropic the same way Claude Code always does, under your account. Voice calls are optional and go to OpenAI only if you add your own API key.</p></details>
+  <details class="qa"><summary><h3>Does it touch my Claude login? Is this within Anthropic's terms?</h3></summary><p>Every agent is the unmodified <code>claude</code> CLI. You sign in with Claude's own <code>claude auth login</code>; the CLI keeps and refreshes its login, and Shaliach never stores your Claude token. Nothing is resold or pooled. Some questions about always-on use on consumer plans have no written answer yet, and we list them openly in <a href="https://github.com/yrks12/shaliach/blob/main/docs/terms-questions.md">docs/terms-questions.md</a>. If you run it for a business, an API key under Anthropic's commercial terms is the safer choice.</p></details>
+  <details class="qa"><summary><h3>What will it cost me in tokens?</h3></summary><p>Shaliach is free for personal use. The agents use your Claude plan, exactly like Claude Code sessions you start yourself. Five agents working at once use it about five times as fast as one. Start with one or two agents and watch your usage on the first day. We have not published a "typical cost" because we have not measured one we trust.</p></details>
+  <details class="qa"><summary><h3>Which platforms work?</h3></summary><p>Server: Ubuntu 24.04 or Debian 12 (x86_64 or arm64), or macOS. Mac app: macOS 14+, Apple silicon. iPhone app: builds from source with a free Apple ID (one command; re-run it every 7 days to re-sign). Any browser: the web board, through an SSH tunnel. There is no Android app yet and no Windows support.</p></details>
+  <details class="qa"><summary><h3>What can the agents do on my machine?</h3></summary><p>Anything their Unix user can do. They run Claude Code in bypassPermissions mode so they do not stall on prompts. The approval cards (Allow once / Always / Deny) stop risky steps, but they are a convenience, not a sandbox. On a server with agent desktops on, the service user is in the <code>docker</code> group, which is root-equivalent. So use a VPS that does nothing else. The Mac bridge, which lets agents run jobs on your Mac, is off until you turn it on, logs every job, and can be stopped from the menu bar.</p></details>
+  <details class="qa"><summary><h3>What is exposed to the internet, and how is it authenticated?</h3></summary><p>The deck binds <code>127.0.0.1</code> only. On a public server, Caddy passes only <code>/v1</code> and <code>/healthz</code> over HTTPS on 443, and <code>ufw</code> allows only SSH and 443. Every <code>/v1</code> call needs a bearer token, compared in constant time; with no token set, the API refuses everything. Each paired phone or Mac gets its own token, stored only as a hash and revocable. Wrong guesses are rate limited. Want nothing public at all? Install with <code>--ssh-tunnel</code> or use Tailscale. Secrets are plain files with <code>0600</code> permissions, not encrypted at rest. Full detail: <a href="https://github.com/yrks12/shaliach/blob/main/docs/security.md">docs/security.md</a>.</p></details>
+  <details class="qa"><summary><h3>Is it open source?</h3></summary><p>No. It is source-available under the PolyForm Noncommercial License 1.0.0. You can read every line, run it and change it for any noncommercial use. Running it for a company needs a business licence; ask on <a href="https://github.com/yrks12/shaliach">GitHub</a>.</p></details>
+  <details class="qa"><summary><h3>Did an AI write this?</h3></summary><p>A lot of the code, yes: most of it was written by Claude Code agents, many of them running inside Shaliach, with a human designing, reviewing and testing every change. If something here reads wrong, open an issue and it gets fixed.</p></details>
+  <details class="qa"><summary><h3>How is this different from OpenAI dots, Meta Muse or Grok Bot?</h3></summary><p>Those rent you an agent in their cloud, with no setup. Shaliach is a team of agents on hardware you own, on the Claude plan you already pay for, and you can read the code that runs them. The trade-off is real: you run one install command and look after a server.</p></details>
+  <details class="qa"><summary><h3>Is this affiliated with Anthropic?</h3></summary><p>No. It is an independent project that runs Claude Code. "Claude" and "Claude Code" are Anthropic's trademarks, used here only to describe compatibility.</p></details>
+</section>
+
+<footer>
+  <p>Source-available under the PolyForm Noncommercial License 1.0.0. Free for noncommercial use; business licence available.</p>
+  <p>Independent project, not affiliated with or endorsed by Anthropic. &middot; <a href="videos.html">Videos</a> &middot; <a href="alternatives/">Alternatives</a> &middot; <a href="https://github.com/yrks12/shaliach">GitHub</a></p>
+</footer>
+</main>
+<script>
+(function () {
+  var v = document.getElementById('film'), b = document.getElementById('sound');
+  if (window.matchMedia('(max-aspect-ratio: 4/5)').matches) {
+    var t = v.getAttribute('data-tall');
+    v.poster = t + '.jpg';
+    v.querySelector('source').src = t + '.mp4';
+    v.load();
+  }
+  b.addEventListener('click', function () {
+    v.muted = false; v.currentTime = 0; v.loop = false; v.play(); b.hidden = true;
+  });
+  v.addEventListener('ended', function () { v.muted = true; v.loop = true; v.play(); b.hidden = false; });
+})();
+(function(){var r=document.documentElement,b=document.getElementById('theme');if(!b)return;b.addEventListener('click',function(){var d=r.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');d=d==='dark'?'light':'dark';r.setAttribute('data-theme',d);try{localStorage.setItem('theme',d)}catch(e){}});})();
+</script>
+</body>
+</html>

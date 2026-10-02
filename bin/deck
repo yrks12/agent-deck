@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Agent Deck office CLI — cross-session awareness for humans and agents.
+#
+#   deck who                     who else is live, and who shares your checkout
+#   deck msg <session> <text>    message a session (lands on its next turn)
+#   deck say <text>              broadcast to every other live session
+#   deck guard [on|off]          collision guard for shared checkouts
+#
+# Any Claude session can run this; that is the point.
+set -euo pipefail
+
+PORT="${AGENT_DECK_PORT:-7788}"
+API="http://127.0.0.1:${PORT}"
+BUS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/agent-bus"
+GUARD_OFF="${BUS}/.guard-off"
+
+# /api requires the deck's token now: a Docker Desktop container reached the
+# unauthenticated board through the VM gateway, and the Linux box binds a
+# WireGuard address rather than loopback. The daemon writes the token here at
+# 0600 on startup, whatever its source, so every local caller reads one file.
+#
+# Missing means empty, not an error. The request still goes out and the daemon
+# answers 401, which lands on the "daemon not answering" message below -- one
+# clear failure rather than two that look different.
+TOKEN_FILE="${DECK_TOKEN_FILE:-${BUS}/deck-token.txt}"
+AUTH="Authorization: Bearer $(cat "$TOKEN_FILE" 2>/dev/null || true)"
+
+die() { echo "deck: $*" >&2; exit 1; }
+
+state() {
+  curl -fsS --max-time 3 -H "$AUTH" "${API}/api/state" 2>/dev/null \
+    || die "daemon not answering on ${API} — run 'cdash install'"
+}
+
+case "${1:-who}" in
+  who)
+    state | python3 -c '
+import json, sys, os, collections
+d = json.load(sys.stdin)
+here = os.environ.get("PWD", "")
+mine = next((s for s in d["sessions"] if s["cwd"] == here), None)
+by_checkout = collections.defaultdict(list)
+for s in d["sessions"]:
+    by_checkout[s["toplevel"]].append(s)
+for top, group in by_checkout.items():
+    shared = " (SHARED - coordinate before editing)" if len(group) > 1 else ""
+    branch = group[0]["git_branch"] or "?"
+    print("%s  [%s]%s" % (top, branch, shared))
+    for s in group:
+        you = "  <- you" if mine and s["session_id"] == mine["session_id"] else ""
+        act = s["activity"]["tool"] if s["activity"]["tool"] and s["state"] == "WORKING" else ""
+        print("   %9s  %-26s %s%s" % (s["state"], s["name"], act, you))
+'
+    ;;
+
+  msg)
+    [ $# -ge 3 ] || die "usage: deck msg <session-name> <text...>"
+    target="$2"; shift 2
+    resp="$(printf '%s' "$(python3 -c '
+import json, sys
+print(json.dumps({"to": sys.argv[1], "text": " ".join(sys.argv[2:])}))
+' "$target" "$@")" | curl -fsS --max-time 5 -X POST "${API}/api/message" \
+      -H "$AUTH" -H "content-type: application/json" --data-binary @-)" \
+      || die "could not queue message"
+    # The server acks anything it delivered over a live socket; say which happened
+    # so you know whether to expect a reply now or on that session's next turn.
+    if printf '%s' "$resp" | grep -q '"delivered": *true'; then
+      echo "deck: delivered to ${target} — it is reading this now"
+    else
+      echo "deck: queued for ${target} — it lands on that session's next turn"
+    fi
+    ;;
+
+  say)
+    [ $# -ge 2 ] || die "usage: deck say <text...>"
+    shift
+    printf '%s' "$(python3 -c '
+import json, sys
+print(json.dumps({"to": "*", "text": " ".join(sys.argv[1:])}))
+' "$@")" | curl -fsS --max-time 5 -X POST "${API}/api/message" \
+      -H "$AUTH" -H "content-type: application/json" --data-binary @- >/dev/null \
+      || die "could not queue broadcast"
+    echo "deck: broadcast queued for every other live session"
+    ;;
+
+  guard)
+    case "${2:-status}" in
+      off) mkdir -p "$BUS"; touch "$GUARD_OFF"; echo "deck: collision guard OFF (shared-checkout writes no longer blocked)" ;;
+      on)  rm -f "$GUARD_OFF"; echo "deck: collision guard ON" ;;
+      *)   [ -f "$GUARD_OFF" ] && echo "deck: collision guard is OFF" || echo "deck: collision guard is ON" ;;
+    esac
+    ;;
+
+  *)
+    sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
+    exit 1
+    ;;
+esac

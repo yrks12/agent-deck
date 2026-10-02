@@ -1,0 +1,37 @@
+# Shaliach
+
+> Shaliach is a team of always-on Claude Code agents that runs on your own Mac or server and is run from your phone. You text one agent, Atlas, the chief of staff. Atlas hires the agents a job needs, gives each one its own browser and terminal, and asks you before anything risky happens. Source-available (PolyForm Noncommercial 1.0.0; business licence available). Independent project, not affiliated with or endorsed by Anthropic.
+
+Shaliach (Hebrew for "emissary", someone sent to act in your name) is self-hosted: threads, files and agent workspaces stay on the machine you install it on, and every agent is an unmodified Claude Code session under your own Claude account. It has a native Mac app, an iPhone app, a web board, and an HTTP + SSE API.
+
+Key facts:
+- Who runs the team: Atlas, a chief-of-staff agent, hires, briefs and retires agents and folds their messages into one readable thread.
+- Each agent has its own Chromium browser and terminal (optionally a sandboxed desktop). You can watch any agent's screen live and take over.
+- Approvals: publishing, paying, logging in and other risky steps stop and ask on your phone: Allow once, Always, or Deny.
+- Mac control: agents can run jobs on, and drive the screen of, your Mac only while you allow it; one shortcut stops it.
+- Team memory: correct one agent and the lesson is saved for the whole team.
+- Cost: Shaliach is free for noncommercial use. The agents use your own Claude plan, like Claude Code sessions you start yourself.
+- Platforms: server on Ubuntu 24.04 or Debian 12 (x86_64/arm64) or macOS; Mac app on macOS 14+ (Apple silicon); iPhone app built from source; no Android or Windows yet.
+- Install: `curl -fsSL https://shaliach.me/install | sh`
+- Licence: source-available, not open source. You can read, run and change it for noncommercial use.
+
+## Pages
+
+- [Home](https://shaliach.me/): what it is, how it works, the team, install, FAQ
+- [Videos](https://shaliach.me/videos.html): the launch film, the tour, and a short cut per line of work
+- [Full text for LLMs](https://shaliach.me/llms-full.txt): the FAQ and product details in one file
+
+## Comparisons
+
+- [Alternatives: why your own agent team instead of one agent in their cloud](https://shaliach.me/alternatives/)
+- [Shaliach vs OpenAI dots](https://shaliach.me/vs/openai-dots/)
+- [Shaliach vs Grok Bot (xAI)](https://shaliach.me/vs/grok/)
+- [Shaliach vs Meta Muse](https://shaliach.me/vs/meta-muse/)
+- [Shaliach vs Devin (Devin alternative)](https://shaliach.me/vs/devin/)
+- [Shaliach vs OpenClaw (OpenClaw alternative)](https://shaliach.me/vs/openclaw/)
+
+## Source
+
+- [GitHub repository](https://github.com/yrks12/shaliach): code, README, docs
+- [Security model](https://github.com/yrks12/shaliach/blob/main/docs/security.md)
+- [Open questions about Anthropic's terms](https://github.com/yrks12/shaliach/blob/main/docs/terms-questions.md)

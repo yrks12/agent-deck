@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+"""site-stats -- how many people are looking at shaliach.me and the public repo.
+
+  bin/site-stats [--repo yrks12/shaliach]
+
+GitHub side (needs `gh` signed in with push access to the repo): repo views and
+clones for the last 14 days, referrers, stars, app downloads per release.
+Site side (no account): the counters docs/site/stats.js bumps on every page view.
+Days are UTC. For unique visitors and a dashboard, see the GoatCounter note in
+docs/site/stats.js.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import time
+import urllib.error
+import urllib.request
+from datetime import date, datetime, timedelta, timezone
+
+COUNTER = "https://abacus.jasoncameron.dev/get/shaliach.me/"
+FIRST_DAY = date(2026, 10, 2)  # the day stats.js went live
+REFS = ("linkedin", "hn", "reddit", "x", "github", "google", "other", "direct")
+PAGES = ("home", "videos")
+
+
+def _app_assets(release: dict) -> list[dict]:
+    return [a for a in release.get("assets", []) if a["name"].endswith((".zip", ".dmg", ".pkg"))]
+
+
+def github_lines(gh: dict, today: str) -> list[str]:
+    v, c, repo = gh["views"], gh["clones"], gh["repo"]
+    day = next((d for d in v.get("views", []) if d["timestamp"].startswith(today)),
+               {"count": 0, "uniques": 0})
+    per_release = [(r["tag_name"], sum(a["download_count"] for a in _app_assets(r)))
+                   for r in gh["releases"]]
+    per_release = [(t, n) for t, n in per_release if n]
+    lines = [
+        f"repo views (14 days): {v['count']} ({v['uniques']} unique); "
+        f"today {day['count']} ({day['uniques']} unique)",
+        f"repo clones (14 days): {c['count']} ({c['uniques']} unique)",
+        f"stars: {repo['stargazers_count']}  forks: {repo['forks_count']}",
+        f"app downloads: {sum(n for _, n in per_release)} ("
+        + ", ".join(f"{t}: {n}" for t, n in per_release) + ")",
+    ]
+    refs = ", ".join(f"{r['referrer']} {r['count']} ({r['uniques']} unique)" for r in gh["referrers"])
+    lines.append(f"repo referrers (14 days): {refs or 'none yet'}")
+    return lines
+
+
+def site_lines(counts: dict, days: list[str]) -> list[str]:
+    def total(prefix):
+        return sum(counts.get(f"{prefix}-{d}", 0) for d in days)
+
+    today = days[-1]
+    refs = sorted(((r, counts.get(f"ref-{r}", 0)) for r in REFS), key=lambda x: -x[1])
+    return [
+        f"site views: {total('views')} total; today {counts.get('views-' + today, 0)}",
+        f"site visits (arrivals from outside): {total('visits')} total; "
+        f"today {counts.get('visits-' + today, 0)}",
+        "pages: " + ", ".join(f"{p} {counts.get('page-' + p, 0)}" for p in PAGES),
+        "came from: " + (", ".join(f"{r} {n}" for r, n in refs if n) or "nobody yet"),
+        f"copied install command: server {counts.get('copy-install-server', 0)}, "
+        f"mac {counts.get('copy-install-mac', 0)}",
+    ]
+
+
+def _gh(repo: str, path: str):
+    out = subprocess.run(["gh", "api", f"repos/{repo}{path}"], capture_output=True, text=True, check=True)
+    return json.loads(out.stdout)
+
+
+def _counter(key: str) -> int:
+    for _ in range(3):
+        try:
+            with urllib.request.urlopen(COUNTER + key, timeout=10) as r:
+                return int(json.load(r).get("value", 0))
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return 0
+            if e.code == 429:
+                time.sleep(10)
+                continue
+            raise
+    return 0
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--repo", default="yrks12/shaliach")
+    args = ap.parse_args()
+    today = datetime.now(timezone.utc).date()
+    days = [(FIRST_DAY + timedelta(n)).isoformat() for n in range((today - FIRST_DAY).days + 1)]
+
+    gh = {
+        "views": _gh(args.repo, "/traffic/views"),
+        "clones": _gh(args.repo, "/traffic/clones"),
+        "referrers": _gh(args.repo, "/traffic/popular/referrers"),
+        "repo": _gh(args.repo, ""),
+        "releases": _gh(args.repo, "/releases"),
+    }
+    keys = [f"{p}-{d}" for d in days for p in ("views", "visits")]
+    keys += [f"page-{p}" for p in PAGES] + [f"ref-{r}" for r in REFS]
+    keys += ["copy-install-server", "copy-install-mac"]
+    counts = {}
+    for k in keys:
+        counts[k] = _counter(k)
+        time.sleep(0.35)  # the counter allows 30 reads per 10 seconds
+
+    print("shaliach.me (no-account counter, UTC days)")
+    for line in site_lines(counts, days):
+        print("  " + line)
+    print(f"github.com/{args.repo}")
+    for line in github_lines(gh, today.isoformat()):
+        print("  " + line)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# opencode-sock — launch OpenCode with a dashboard-injectable UNIX socket.
+#
+# This wrapper starts `opencode serve` in the background, attaches a TUI to it,
+# and runs a small proxy that listens on /tmp/opencode-socks/<attach_pid>.sock.
+# Messages written to that socket (e.g. by the Agent Deck) are forwarded as a
+# prompt into the live OpenCode session, so the session wakes up and replies.
+#
+# Usage:
+#   opencode-sock [directory]
+#
+# The wrapper stays in the foreground until the TUI exits.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROXY="${REPO_ROOT}/server/opencode_sock.py"
+
+DIR="${1:-.}"
+cd "$DIR"
+CWD="$(pwd -P)"
+
+SOCK_DIR="/tmp/opencode-socks"
+mkdir -p "$SOCK_DIR"
+
+LOG_DIR="/tmp/opencode-sock-logs"
+mkdir -p "$LOG_DIR"
+SERVE_LOG="$LOG_DIR/serve-$$.log"
+
+# Start the headless server on a random port.
+opencode serve --port 0 --hostname 127.0.0.1 > "$SERVE_LOG" 2>&1 &
+SERVER_PID=$!
+
+# Capture the server URL.
+URL=""
+for _ in $(seq 1 30); do
+  URL=$(grep -oE "http://[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+" "$SERVE_LOG" | head -1 || true)
+  if [ -n "$URL" ]; then break; fi
+  if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+    echo "opencode-sock: server died before publishing its URL" >&2
+    cat "$SERVE_LOG" >&2
+    exit 1
+  fi
+  sleep 0.5
+done
+
+if [ -z "$URL" ]; then
+  echo "opencode-sock: timed out waiting for server URL" >&2
+  kill "$SERVER_PID" 2>/dev/null || true
+  cat "$SERVE_LOG" >&2
+  exit 1
+fi
+
+# Attach the TUI. This is the process the dashboard will know as the session.
+opencode attach "$URL" &
+ATTACH_PID=$!
+
+# Give the attach a moment to start.
+sleep 1
+
+# Confirm the attach process is alive.
+if ! kill -0 "$ATTACH_PID" 2>/dev/null; then
+  echo "opencode-sock: TUI attach failed" >&2
+  kill "$SERVER_PID" 2>/dev/null || true
+  exit 1
+fi
+
+# Write metadata for the proxy / dashboard.
+META="$SOCK_DIR/$ATTACH_PID.json"
+echo "{\"url\":\"$URL\",\"server_pid\":$SERVER_PID,\"attach_pid\":$ATTACH_PID,\"cwd\":\"$CWD\"}" > "$META"
+
+# Start the socket proxy.
+python3 "$PROXY" --socket "$SOCK_DIR/$ATTACH_PID.sock" --meta "$META" --cwd "$CWD" > "$LOG_DIR/proxy-$ATTACH_PID.log" 2>&1 &
+PROXY_PID=$!
+
+# Cleanup on exit.
+cleanup() {
+  rm -f "$SOCK_DIR/$ATTACH_PID.sock" "$META"
+  kill "$PROXY_PID" 2>/dev/null || true
+  kill "$SERVER_PID" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+# Wait for the TUI to exit. If the proxy or server die first, report it.
+wait "$ATTACH_PID"

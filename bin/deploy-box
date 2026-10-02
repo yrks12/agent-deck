@@ -1,0 +1,282 @@
+#!/usr/bin/env python3
+"""deploy-box -- the ONE way code reaches the always-on box.
+
+    bin/deploy-box [--commit REF] [--host USER@HOST] [--path DIR]
+                   [--health-url URL] [--force-rollback]
+
+Why it exists (measured 2026-09-30): "another session overwrote the box with
+older code about a minute after my deploy." Agents rsynced checkouts to the box
+by hand; whoever finished last won, even with an older tree.
+
+What it does, in order, and refuses rather than improvises:
+
+  1. Refuses a dirty tree (anything uncommitted under the shipped paths), then
+     exports exactly REF (default HEAD) with `git archive`. Only committed code ships.
+  2. Takes `flock -n <path>/.deploy.lock` on the box and HOLDS it for the whole
+     run (a held ssh session). A second deploy started meanwhile is refused.
+  3. Reads <path>/DEPLOYED and refuses unless REF is a descendant of the commit
+     there (`git merge-base --is-ancestor`). Going back needs --force-rollback.
+  4. Backs up the shipped paths to <path>/.deploy-backups/<stamp>-<sha> (keeps 5).
+  5. rsyncs server/ hooks/ bin/ docs/ web/ deploy/ and VERSION (with --delete
+     inside those directories only; .venv, logs and local state are untouched).
+  6. Restarts the service and waits for /healthz. If it does not answer, it
+     restores the backup, restarts again, and exits 1 with DEPLOYED unchanged.
+  7. Writes DEPLOYED (sha, time, who, tree fingerprint). The deck and deckdoctor
+     compare the tree with it and say loudly when a hand rsync changed it.
+
+Configuration (flags win over environment):
+  DECK_BOX            ssh target, e.g. deploy@deck.example.com  (--host)
+  DECK_BOX_PATH       code root on the box (default /opt/agent-deck)  (--path)
+  DEPLOY_BOX_RESTART  remote restart command (default: sudo systemctl restart agentdeck)
+  DEPLOY_BOX_HEALTH   remote health command (default: curl the unit's --host/--port /healthz)
+  DEPLOY_BOX_PYTHON   python on the box (default python3)
+  DEPLOY_BOX_WHO      who to record (default: git user.name and this machine)
+
+Stdlib only; runs on the Mac's system python 3.9.
+"""
+from __future__ import annotations
+
+import argparse
+import datetime as _dt
+import os
+import shlex
+import socket
+import subprocess
+import sys
+import tarfile
+import tempfile
+from pathlib import Path
+
+SHIPPED_DIRS = ("server", "hooks", "bin", "docs", "web", "deploy")
+SHIPPED_FILES = ("VERSION",)
+KEEP_BACKUPS = 5
+EXCLUDES = ("__pycache__", "*.pyc", ".pytest_cache", ".DS_Store")
+
+
+class Refuse(Exception):
+    pass
+
+
+def say(msg: str) -> None:
+    print(f"deploy-box: {msg}", flush=True)
+
+
+def run(argv, *, cwd=None, input=None, check=True) -> subprocess.CompletedProcess:
+    r = subprocess.run(argv, cwd=cwd, input=input, capture_output=True, text=True)
+    if check and r.returncode != 0:
+        raise Refuse(f"{' '.join(argv[:3])}... failed ({r.returncode}): "
+                     f"{(r.stderr or r.stdout).strip()[-400:]}")
+    return r
+
+
+class Box:
+    def __init__(self, host: str, path: str) -> None:
+        self.host, self.path = host, path.rstrip("/") or "/"
+
+    def sh(self, command: str, *, check=True, input=None) -> subprocess.CompletedProcess:
+        return run(["ssh", "-o", "BatchMode=yes", self.host, command], input=input, check=check)
+
+    def p(self, rel: str = "") -> str:
+        return shlex.quote(f"{self.path}/{rel}" if rel else self.path)
+
+
+class Lock:
+    """`flock -n` on the box, held by an open ssh session until release()."""
+
+    def __init__(self, box: Box, who: str) -> None:
+        self.box, self.who, self.proc = box, who, None
+
+    def acquire(self) -> None:
+        lock = self.box.p(".deploy.lock")
+        holder = self.box.p(".deploy.lock.who")
+        remote = (f"mkdir -p {self.box.p()} && exec flock -n {lock} -c "
+                  + shlex.quote(f"printf '%s\\n' {shlex.quote(self.who)} > {holder}; "
+                                "echo LOCKED; cat >/dev/null"))
+        self.proc = subprocess.Popen(["ssh", "-o", "BatchMode=yes", self.box.host, remote],
+                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE, text=True)
+        line = self.proc.stdout.readline().strip()
+        if line != "LOCKED":
+            self.proc.wait(timeout=30)
+            who = self.box.sh(f"cat {holder} 2>/dev/null", check=False).stdout.strip()
+            raise Refuse(f"another deploy holds the lock on {self.box.host}:{self.box.path}"
+                         f"{' (' + who + ')' if who else ''}. Wait for it, then run me again.")
+
+    def release(self) -> None:
+        if self.proc is None:
+            return
+        try:
+            self.proc.stdin.close()
+            self.proc.wait(timeout=30)
+        except Exception:
+            self.proc.kill()
+        self.proc = None
+
+
+def repo_root() -> Path:
+    return Path(run(["git", "rev-parse", "--show-toplevel"]).stdout.strip())
+
+
+def refuse_dirty(repo: Path) -> None:
+    paths = [p for p in SHIPPED_DIRS + SHIPPED_FILES if (repo / p).exists()]
+    out = run(["git", "status", "--porcelain", "--", *paths], cwd=repo).stdout.strip()
+    if out:
+        raise Refuse("the working tree is dirty under the shipped paths; commit or stash "
+                     "first (only committed code is deployed):\n" + out)
+
+
+def export(repo: Path, sha: str, into: Path) -> None:
+    paths = [p for p in SHIPPED_DIRS + SHIPPED_FILES
+             if run(["git", "cat-file", "-e", f"{sha}:{p}"], cwd=repo, check=False).returncode == 0]
+    if "server" not in paths:
+        raise Refuse(f"{sha[:12]} has no server/ directory; that is not a Shaliach commit")
+    tar = into.parent / "export.tar"
+    with open(tar, "wb") as fh:
+        r = subprocess.run(["git", "archive", "--format=tar", sha, *paths], cwd=repo, stdout=fh)
+    if r.returncode != 0:
+        raise Refuse("git archive failed")
+    with tarfile.open(tar) as tf:
+        tf.extractall(into)
+
+
+def deployed(box: Box) -> dict:
+    out = box.sh(f"cat {box.p('DEPLOYED')} 2>/dev/null || true").stdout
+    rec = {}
+    for line in out.splitlines():
+        k, sep, v = line.partition("=")
+        if sep:
+            rec[k.strip()] = v.strip()
+    return rec
+
+
+def refuse_rollback(repo: Path, current: str, target: str, rec: dict, force: bool) -> None:
+    def have(sha: str) -> bool:
+        return run(["git", "cat-file", "-e", f"{sha}^{{commit}}"], cwd=repo, check=False).returncode == 0
+
+    if not have(current):
+        run(["git", "fetch", "--quiet", "origin"], cwd=repo, check=False)
+    if not have(current):
+        if force:
+            say(f"deployed commit {current[:12]} is unknown here; --force-rollback, going on")
+            return
+        raise Refuse(f"the box runs {current[:12]}, which this clone does not have, so I "
+                     "cannot prove the target is a descendant of it. Fetch it, or pass "
+                     "--force-rollback if you mean to replace it.")
+    ok = run(["git", "merge-base", "--is-ancestor", current, target],
+             cwd=repo, check=False).returncode == 0
+    if ok:
+        return
+    by = f" (deployed by {rec.get('who', '?')} at {rec.get('time', '?')})"
+    if force:
+        say(f"--force-rollback: replacing {current[:12]}{by} with {target[:12]}, "
+            "which is NOT a descendant of it")
+        return
+    raise Refuse(f"{target[:12]} is not a descendant of the deployed {current[:12]}{by}. "
+                 "Deploying it would roll the box back and drop that work. Rebase or merge "
+                 "onto it (git fetch; git merge origin/main), or pass --force-rollback if a "
+                 "rollback is really what you want.")
+
+
+def default_health(box: Box) -> str:
+    # The unit's own --host/--port, so a deck bound to a tunnel address is probed
+    # there (loopback is closed on such a box).
+    url = ("$(systemctl cat agentdeck 2>/dev/null | sed -n "
+           "'s/.*--host \\([^ ]*\\) --port \\([0-9]*\\).*/http:\\/\\/\\1:\\2\\/healthz/p' "
+           "| head -n 1)")
+    return (f"u={url}; u=${{u:-http://127.0.0.1:7789/healthz}}; "
+            "for i in $(seq 1 30); do curl -fsS -m 3 \"$u\" >/dev/null 2>&1 && exit 0; "
+            "sleep 1; done; echo \"no answer from $u\" >&2; exit 1")
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(prog="deploy-box", description="Deploy a commit to the box, safely.")
+    ap.add_argument("--commit", default="HEAD")
+    ap.add_argument("--host", default=os.environ.get("DECK_BOX", ""))
+    ap.add_argument("--path", default=os.environ.get("DECK_BOX_PATH", "/opt/agent-deck"))
+    ap.add_argument("--health-url", default="")
+    ap.add_argument("--force-rollback", action="store_true")
+    a = ap.parse_args(argv)
+
+    if not a.host:
+        say("no box: pass --host USER@HOST or set DECK_BOX")
+        return 2
+    box = Box(a.host, a.path)
+    restart = os.environ.get("DEPLOY_BOX_RESTART", "sudo systemctl restart agentdeck")
+    health = os.environ.get("DEPLOY_BOX_HEALTH") or (
+        f"curl -fsS -m 5 --retry 30 --retry-delay 1 --retry-all-errors "
+        f"{shlex.quote(a.health_url)} >/dev/null" if a.health_url else default_health(box))
+    py = os.environ.get("DEPLOY_BOX_PYTHON", "python3")
+
+    lock = None
+    try:
+        repo = repo_root()
+        refuse_dirty(repo)
+        sha = run(["git", "rev-parse", "--verify", f"{a.commit}^{{commit}}"], cwd=repo).stdout.strip()
+        user = run(["git", "config", "user.name"], cwd=repo, check=False).stdout.strip() or os.environ.get("USER", "?")
+        who = os.environ.get("DEPLOY_BOX_WHO") or f"{user}@{socket.gethostname().split('.')[0]}"
+        say(f"deploying {sha[:12]} to {box.host}:{box.path} as {who}")
+
+        with tempfile.TemporaryDirectory(prefix="deploy-box-") as tmp:
+            stage = Path(tmp) / "tree"
+            stage.mkdir()
+            export(repo, sha, stage)
+
+            lock = Lock(box, f"{who} deploying {sha[:12]} since {_dt.datetime.now(_dt.timezone.utc):%H:%M:%SZ}")
+            lock.acquire()
+            say("lock held")
+
+            rec = deployed(box)
+            current = rec.get("sha", "")
+            if current == sha:
+                say(f"{sha[:12]} is already deployed ({rec.get('who', '?')}, {rec.get('time', '?')}); nothing to do")
+                return 0
+            if current:
+                refuse_rollback(repo, current, sha, rec, a.force_rollback)
+            else:
+                say("no DEPLOYED record on the box: first deploy through this script")
+
+            stamp = _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%d-%H%M%S")
+            backup = f".deploy-backups/{stamp}-{(current or 'unrecorded')[:12]}"
+            present = [p for p in SHIPPED_DIRS + SHIPPED_FILES]
+            box.sh(f"cd {box.p()} && mkdir -p {shlex.quote(backup)} && "
+                   f"for p in {' '.join(present)}; do [ -e \"$p\" ] && cp -a \"$p\" {shlex.quote(backup)}/; done; "
+                   f"cd .deploy-backups && ls -1d */ | sort -r | tail -n +{KEEP_BACKUPS + 1} | while read -r old; do rm -rf \"$old\"; done; true")
+            say(f"backed up to {box.path}/{backup}")
+
+            excl = [x for e in EXCLUDES for x in ("--exclude", e)]
+            for d in SHIPPED_DIRS:
+                if (stage / d).is_dir():
+                    run(["rsync", "-a", "--checksum", "--delete", *excl, f"{stage / d}/", f"{box.host}:{box.path}/{d}/"])
+            for f in SHIPPED_FILES:
+                if (stage / f).is_file():
+                    run(["rsync", "-a", "--checksum", str(stage / f), f"{box.host}:{box.path}/{f}"])
+            say("files synced")
+
+            box.sh(restart)
+            if box.sh(health, check=False).returncode != 0:
+                say("healthz did not answer after the restart -- restoring the previous tree")
+                box.sh(f"cd {box.p()} && for p in {' '.join(present)}; do "
+                       f"[ -e {shlex.quote(backup)}/\"$p\" ] && rm -rf \"$p\" && cp -a {shlex.quote(backup)}/\"$p\" .; done; true")
+                box.sh(restart, check=False)
+                restored = box.sh(health, check=False).returncode == 0
+                raise Refuse(f"{sha[:12]} did not pass /healthz; the previous tree is back "
+                             f"({'and answering' if restored else 'BUT IT DOES NOT ANSWER EITHER -- look now'}). "
+                             "DEPLOYED is unchanged.")
+
+            fp = box.sh(f"cd {box.p()} && {py} -m server.deploy_guard fingerprint .").stdout.strip()
+            when = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            body = f"sha={sha}\ntime={when}\nwho={who}\nfingerprint={fp}\n"
+            box.sh(f"cat > {box.p('DEPLOYED.tmp')} && mv {box.p('DEPLOYED.tmp')} {box.p('DEPLOYED')}",
+                   input=body)
+            say(f"deployed {sha[:12]}: /healthz answers, DEPLOYED written")
+            return 0
+    except Refuse as err:
+        say(f"REFUSED: {err}")
+        return 1
+    finally:
+        if lock is not None:
+            lock.release()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,390 @@
+{
+ "servers": [
+  {
+   "server": {
+    "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+    "name": "ai.smithery/smithery-ai-slack",
+    "description": "Enable interaction with Slack workspaces. Supports subscribing to Slack events through Resources.",
+    "repository": {
+     "url": "https://github.com/smithery-ai/mcp-servers",
+     "source": "github",
+     "subfolder": "slack"
+    },
+    "version": "1.0.0",
+    "remotes": [
+     {
+      "type": "streamable-http",
+      "url": "https://server.smithery.ai/@smithery-ai/slack/mcp",
+      "headers": [
+       {
+        "description": "Bearer token for Smithery authentication",
+        "isRequired": true,
+        "value": "Bearer {smithery_api_key}",
+        "isSecret": true,
+        "name": "Authorization"
+       }
+      ]
+     }
+    ]
+   },
+   "_meta": {
+    "io.modelcontextprotocol.registry/official": {
+     "status": "active",
+     "statusChangedAt": "2025-09-10T20:56:36.64385Z",
+     "publishedAt": "2025-09-10T20:56:36.64385Z",
+     "updatedAt": "2025-09-10T20:56:36.64385Z",
+     "isLatest": true
+    }
+   }
+  },
+  {
+   "server": {
+    "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+    "name": "app.vercel.auditflag-lac/auditflag",
+    "description": "Search SEC EDGAR for going-concern auditor opinions in real 10-K/10-Q filings.",
+    "version": "1.0.0",
+    "websiteUrl": "https://auditflag-lac.vercel.app",
+    "remotes": [
+     {
+      "type": "streamable-http",
+      "url": "https://auditflag-lac.vercel.app/api/mcp"
+     }
+    ]
+   },
+   "_meta": {
+    "io.modelcontextprotocol.registry/official": {
+     "status": "active",
+     "statusChangedAt": "2026-09-13T06:30:46.421887Z",
+     "publishedAt": "2026-09-13T06:30:46.421887Z",
+     "updatedAt": "2026-09-13T06:30:46.421887Z",
+     "isLatest": true
+    }
+   }
+  },
+  {
+   "server": {
+    "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+    "name": "com.microsoft/esrp-oss-mcp-test",
+    "description": "The ESRP OSS MCP server exposes tools to discover & validate trusted Microsoft OSS Packages.",
+    "repository": {
+     "url": "https://github.com/sravanism/esrp-oss-mcp-server",
+     "source": "github"
+    },
+    "version": "26.930.134449",
+    "packages": [
+     {
+      "registryType": "npm",
+      "identifier": "@microsoft/esrp-release-test-integration",
+      "version": "26.226.151853",
+      "transport": {
+       "type": "stdio"
+      }
+     },
+     {
+      "registryType": "pypi",
+      "identifier": "esrp_release_test",
+      "version": "26.226.153828",
+      "transport": {
+       "type": "stdio"
+      }
+     },
+     {
+      "registryType": "nuget",
+      "identifier": "sravanism.oss.mcp.server",
+      "version": "0.0.3",
+      "transport": {
+       "type": "stdio"
+      }
+     },
+     {
+      "registryType": "oci",
+      "identifier": "docker.io/sravanmsft/esrp-oss-mcp-test:mcpserver",
+      "transport": {
+       "type": "stdio"
+      }
+     },
+     {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/esrp-test/winget-esrp-ppe/releases/download/v0.0.2/com.microsoftesrp-oss-mcp-test.mcpb",
+      "fileSha256": "d3ebcc77af2be64a05aee7d355dd7f2d020184bc88b7a371a8b16fe719ead622",
+      "transport": {
+       "type": "stdio"
+      }
+     }
+    ],
+    "remotes": [
+     {
+      "type": "streamable-http",
+      "url": "https://esrp-mcp-server-test-{env}.azurewebsites.net/mcp",
+      "variables": {
+       "env": {
+        "description": "Hosted environment for the ESRP OSS MCP Server",
+        "isRequired": true,
+        "default": "ppe",
+        "choices": [
+         "ppe",
+         "prod"
+        ]
+       }
+      }
+     }
+    ]
+   },
+   "_meta": {
+    "io.modelcontextprotocol.registry/official": {
+     "status": "active",
+     "statusChangedAt": "2026-09-30T13:54:51.91525Z",
+     "publishedAt": "2026-09-30T13:54:51.91525Z",
+     "updatedAt": "2026-09-30T13:54:51.91525Z",
+     "isLatest": true
+    }
+   }
+  },
+  {
+   "server": {
+    "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
+    "name": "com.microsoft/microsoft-learn-mcp",
+    "description": "Official Microsoft Learn MCP Server \u2013 real-time, trusted docs & code samples for AI and LLMs.",
+    "title": "Microsoft Learn MCP",
+    "repository": {
+     "url": "https://github.com/MicrosoftDocs/mcp",
+     "source": "github"
+    },
+    "version": "1.0.0",
+    "websiteUrl": "https://github.com/MicrosoftDocs/mcp",
+    "remotes": [
+     {
+      "type": "streamable-http",
+      "url": "https://learn.microsoft.com/api/mcp"
+     }
+    ]
+   },
+   "_meta": {
+    "io.modelcontextprotocol.registry/official": {
+     "status": "active",
+     "statusChangedAt": "2025-11-21T06:16:59.721831Z",
+     "publishedAt": "2025-11-21T06:16:59.721831Z",
+     "updatedAt": "2025-11-21T06:16:59.721831Z",
+     "isLatest": true
+    }
+   }
+  },
+  {
+   "server": {
+    "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+    "name": "com.notion/mcp",
+    "description": "Official Notion MCP server",
+    "repository": {},
+    "version": "1.0.1",
+    "remotes": [
+     {
+      "type": "streamable-http",
+      "url": "https://mcp.notion.com/mcp"
+     },
+     {
+      "type": "sse",
+      "url": "https://mcp.notion.com/sse"
+     }
+    ]
+   },
+   "_meta": {
+    "io.modelcontextprotocol.registry/official": {
+     "status": "active",
+     "statusChangedAt": "2025-09-11T22:25:50.737872Z",
+     "publishedAt": "2025-09-11T22:25:50.737872Z",
+     "updatedAt": "2025-09-11T22:25:50.737872Z",
+     "isLatest": true
+    }
+   }
+  },
+  {
+   "server": {
+    "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+    "name": "io.github.brave/brave-search-mcp-server",
+    "description": "Brave Search MCP Server: web results, images, videos, rich results, AI summaries, and more.",
+    "repository": {
+     "url": "https://github.com/brave/brave-search-mcp-server",
+     "source": "github"
+    },
+    "version": "2.1.3",
+    "packages": [
+     {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@brave/brave-search-mcp-server",
+      "version": "2.1.3",
+      "transport": {
+       "type": "stdio"
+      },
+      "environmentVariables": [
+       {
+        "description": "Your API key for the service",
+        "isRequired": true,
+        "format": "string",
+        "isSecret": true,
+        "name": "BRAVE_API_KEY"
+       }
+      ]
+     }
+    ]
+   },
+   "_meta": {
+    "io.modelcontextprotocol.registry/official": {
+     "status": "active",
+     "statusChangedAt": "2026-08-20T16:12:11.244327Z",
+     "publishedAt": "2026-08-20T16:12:11.244327Z",
+     "updatedAt": "2026-08-20T16:12:11.244327Z",
+     "isLatest": true
+    }
+   }
+  },
+  {
+   "server": {
+    "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+    "name": "io.github.github/github-mcp-server",
+    "description": "Connect AI assistants to GitHub - manage repos, issues, PRs, and workflows through natural language.",
+    "title": "GitHub",
+    "repository": {
+     "url": "https://github.com/github/github-mcp-server",
+     "source": "github"
+    },
+    "version": "1.12.2",
+    "packages": [
+     {
+      "registryType": "oci",
+      "identifier": "ghcr.io/github/github-mcp-server:1.12.2",
+      "transport": {
+       "type": "stdio"
+      },
+      "runtimeArguments": [
+       {
+        "description": "Publish the OAuth callback port to loopback so the in-container login callback is reachable",
+        "value": "127.0.0.1:8085:8085",
+        "type": "named",
+        "name": "-p"
+       },
+       {
+        "description": "Fixed OAuth callback port, matching the published port above",
+        "value": "GITHUB_OAUTH_CALLBACK_PORT=8085",
+        "type": "named",
+        "name": "-e"
+       },
+       {
+        "description": "Optional GitHub Personal Access Token. Omit to log in with OAuth on first use.",
+        "value": "GITHUB_PERSONAL_ACCESS_TOKEN={token}",
+        "variables": {
+         "token": {
+          "format": "string",
+          "isSecret": true
+         }
+        },
+        "type": "named",
+        "name": "-e"
+       }
+      ]
+     }
+    ],
+    "remotes": [
+     {
+      "type": "streamable-http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": [
+       {
+        "description": "Authorization header with authentication token (PAT or App token)",
+        "isSecret": true,
+        "name": "Authorization"
+       }
+      ]
+     }
+    ]
+   },
+   "_meta": {
+    "io.modelcontextprotocol.registry/official": {
+     "status": "active",
+     "statusChangedAt": "2026-09-16T10:57:24.450051Z",
+     "publishedAt": "2026-09-16T10:57:24.450051Z",
+     "updatedAt": "2026-09-16T10:57:24.450051Z",
+     "isLatest": true
+    }
+   }
+  },
+  {
+   "server": {
+    "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+    "name": "io.github.upstash/context7",
+    "description": "Up-to-date code docs for any prompt",
+    "title": "Context7",
+    "repository": {
+     "url": "https://github.com/upstash/context7",
+     "source": "github"
+    },
+    "version": "4.1.1",
+    "websiteUrl": "https://context7.com",
+    "icons": [
+     {
+      "src": "https://raw.githubusercontent.com/upstash/context7/master/public/icon.png",
+      "mimeType": "image/png"
+     }
+    ],
+    "packages": [
+     {
+      "registryType": "npm",
+      "identifier": "@upstash/context7-mcp",
+      "version": "4.1.1",
+      "transport": {
+       "type": "stdio"
+      },
+      "environmentVariables": [
+       {
+        "description": "API key for authentication",
+        "isSecret": true,
+        "name": "CONTEXT7_API_KEY"
+       }
+      ]
+     },
+     {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/upstash/context7/releases/download/mcpb-v4.1.1/context7.mcpb",
+      "version": "4.1.1",
+      "fileSha256": "887f32c140ca9fa85a0363191f5ee7a443dac17649aaf1f96cdf505e4dc9d26f",
+      "transport": {
+       "type": "stdio"
+      },
+      "environmentVariables": [
+       {
+        "description": "API key for authentication",
+        "isSecret": true,
+        "name": "CONTEXT7_API_KEY"
+       }
+      ]
+     }
+    ],
+    "remotes": [
+     {
+      "type": "streamable-http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": [
+       {
+        "description": "API key for authentication. Accepts \"Bearer <key>\" or the raw key.",
+        "isSecret": true,
+        "name": "Authorization"
+       }
+      ]
+     }
+    ]
+   },
+   "_meta": {
+    "io.modelcontextprotocol.registry/official": {
+     "status": "active",
+     "statusChangedAt": "2026-09-14T14:53:08.392156Z",
+     "publishedAt": "2026-09-14T14:53:08.392156Z",
+     "updatedAt": "2026-09-14T14:53:08.392156Z",
+     "isLatest": true
+    }
+   }
+  }
+ ],
+ "metadata": {
+  "count": 8
+ }
+}

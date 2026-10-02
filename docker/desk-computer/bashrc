@@ -1,0 +1,4 @@
+# Appended to /etc/bash.bashrc in the desk computer image.
+PS1='\[\e[1;32m\]agent@${DECK_DESK:-desk}\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]\$ '
+alias ls='ls --color=auto'
+alias grep='grep --color=auto'

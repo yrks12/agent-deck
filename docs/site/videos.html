@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shaliach -- the videos</title>
+<meta name="description" content="Every Shaliach demo in one place: the English and Hebrew tours, and a cut for each kind of work.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f1e7;--fg:#1d1a16;--muted:#6b6458;--card:#fffdf8;--line:#e0d7c4;--accent:#b4491f}
+@media (prefers-color-scheme:dark){:root{--bg:#14110e;--fg:#f1eadb;--muted:#a59d8c;--card:#1c1814;--line:#2f2922;--accent:#e8783f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.6 Inter,system-ui,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:40px 16px 56px}
+h1{font:800 clamp(2.4rem,9vw,4rem)/1 Fraunces,Georgia,serif;margin:0 0 12px;letter-spacing:-.02em}
+h2{font:600 1.4rem Fraunces,Georgia,serif;margin:32px 0 12px}
+p{color:var(--muted);max-width:62ch;margin:0 0 12px}
+a{color:var(--accent)}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+video{display:block;width:100%;height:auto;background:#0b0a12}
+figcaption{padding:10px 14px 12px}
+figcaption b{font-family:Fraunces,Georgia,serif;font-weight:600}
+figcaption span{display:block;color:var(--muted);font-size:.9rem}
+</style>
+</head>
+<body>
+<main>
+<p><a href="./">&larr; shaliach.me</a></p>
+<h1>The videos</h1>
+<p>Tap one to play it with sound. Each runs under a minute. The demo data is made up: an invented caf&eacute;, invented clients, fictional agents.</p>
+
+<h2>The tour</h2>
+<div class="grid" id="tour"></div>
+
+<h2>For your kind of work</h2>
+<div class="grid" id="work"></div>
+
+<noscript><p>The videos need JavaScript to list here; they are also on the <a href="https://github.com/yrks12/shaliach/releases/tag/site-videos">release page</a>.</p></noscript>
+</main>
+<script>
+// One line per video. A file is videos/shaliach-<id>.mp4 (from the site-videos release)
+// with its poster videos/shaliach-<id>.jpg from the same release.
+var TOUR = [
+  ["english", "The tour, in English", "One café, one week: text Atlas, get a whole team."],
+  ["hebrew", "הסיור, בעברית", "The same tour, in Hebrew."],
+  ["everyone", "Everyone", "Founders, accountants, clinics, shops: the short version for all of them."]
+];
+var WORK = [
+  ["founder", "Founders", "It's 11pm. You're still answering emails."],
+  ["accountant", "Accountants", "Fourteen clients still owe you receipts."],
+  ["agency", "Agencies", "Friday, 6pm. Six client reports due Monday."],
+  ["clinic", "Clinics", "Patients overdue for a check-up, and nobody has time to call."],
+  ["ecommerce", "Online shops", "“Where's my order?” Again."],
+  ["insurance", "Insurance brokers", "One renewal. Five carrier portals. The same details, five times."],
+  ["realestate", "Estate agents", "A buyer enquired at 9:40pm. You saw it at 8am."],
+  ["developers", "Developers", "You close the laptop. Your agents stop."]
+];
+function fill(id, rows) {
+  var el = document.getElementById(id);
+  rows.forEach(function (r) {
+    var f = document.createElement('figure');
+    f.innerHTML = '<video controls playsinline preload="none" poster="videos/shaliach-' + r[0] + '.jpg">' +
+      '<source src="videos/shaliach-' + r[0] + '.mp4" type="video/mp4"></video>' +
+      '<figcaption><b></b><span></span></figcaption>';
+    f.querySelector('b').textContent = r[1];
+    f.querySelector('span').textContent = r[2];
+    el.appendChild(f);
+  });
+}
+fill('tour', TOUR); fill('work', WORK);
+</script>
+</body>
+</html>

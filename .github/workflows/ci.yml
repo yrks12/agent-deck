@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main, feat/agent-surface]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend / Python 3.13
+    runs-on: ubuntu-latest
+    # The suite alone ran 12m16s on 2026-10-02 (4,300+ tests); 15 left no room.
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: playwright install --with-deps chromium
+      - run: python -m pytest -q
+
+  macos:
+    name: macOS / Swift
+    runs-on: macos-26
+    timeout-minutes: 20
+    # Pinned to the Xcode the app is released with (26.0.1). On the runner's
+    # default (26.6, Swift 6.3) the test process dies with SIGBUS inside
+    # AgentComputerTests' poll task -- the same task-allocator crash the
+    # displays work measured and worked around on 26.0.1. That is an open
+    # defect to fix before the release toolchain moves, not a CI quirk.
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.0.1.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v7
+      - run: swift --version
+      - run: swift test --package-path macos

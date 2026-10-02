@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shaliach -- send one, a whole team goes</title>
+<meta name="description" content="Shaliach is Hebrew for emissary: someone you send to act in your name. Text one agent; it hires and runs a team of Claude Code agents on your own Mac or server, and asks you before anything goes out the door.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Shaliach -- send one, a whole team goes">
+<meta property="og:description" content="Text one agent. It hires the team, gives each one its own computer, and asks you before anything goes out the door.">
+<meta property="og:url" content="https://shaliach.me/">
+<meta property="og:image" content="https://shaliach.me/media/hero-16x9.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,800;1,9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f1e7;--fg:#1d1a16;--muted:#6b6458;--card:#fffdf8;--line:#e0d7c4;--accent:#b4491f;--accent-fg:#fff;--code:#201c17;--code-fg:#f3e9d2}
+@media (prefers-color-scheme:dark){:root{--bg:#14110e;--fg:#f1eadb;--muted:#a59d8c;--card:#1c1814;--line:#2f2922;--accent:#e8783f;--accent-fg:#14110e;--code:#0c0a08;--code-fg:#f3e9d2}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.6 Inter,system-ui,sans-serif}
+main{max-width:900px;margin:0 auto;padding:0 20px}
+.hero{padding:64px 0 28px}
+.he{font:500 .9rem "IBM Plex Mono",monospace;color:var(--accent);letter-spacing:.06em;margin:0 0 12px}
+h1{font:800 clamp(3.2rem,13vw,6.5rem)/.95 Fraunces,Georgia,serif;margin:0 0 18px;letter-spacing:-.03em}
+.tag{font:600 clamp(1.4rem,4.8vw,2.1rem)/1.2 Fraunces,Georgia,serif;margin:0 0 18px}
+.sub{color:var(--muted);max-width:62ch;margin:0 0 26px}
+.cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn{display:inline-block;background:var(--accent);color:var(--accent-fg);font-weight:600;font-size:1.1rem;padding:14px 24px;border-radius:12px;text-decoration:none}
+.btn:hover{filter:brightness(1.08)}
+.link{color:var(--fg);font-weight:500;padding:14px 8px}
+.film{position:relative;margin:8px 0 36px;border-radius:16px;overflow:hidden;background:#0b0a12;border:1px solid var(--line)}
+.film video{display:block;width:100%;height:auto;max-height:80vh;margin:0 auto}
+.sound{position:absolute;right:14px;bottom:14px;border:0;border-radius:999px;padding:10px 16px;font:600 .95rem Inter,sans-serif;background:rgba(0,0,0,.65);color:#fff;cursor:pointer}
+.sound[hidden]{display:none}
+h2{font:600 1.7rem/1.2 Fraunces,Georgia,serif;margin:0 0 14px}
+section{padding:36px 0;border-top:1px solid var(--line)}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+.card h3{margin:0 0 6px;font:600 1.12rem/1.3 Fraunces,Georgia,serif}
+.card p{margin:0;color:var(--muted);font-size:.97rem}
+blockquote{margin:0 0 16px;padding:0 0 0 18px;border-left:3px solid var(--accent);font:italic 600 1.35rem/1.35 Fraunces,Georgia,serif}
+blockquote cite{display:block;margin-top:6px;font:400 .85rem Inter,sans-serif;color:var(--muted)}
+.nots{list-style:none;padding:0;margin:0}
+.nots li{padding:10px 0;border-bottom:1px dashed var(--line)}
+.nots b{font-family:Fraunces,Georgia,serif}
+.step{margin:0 0 6px;font-weight:600}
+pre{background:var(--code);color:var(--code-fg);border-radius:12px;padding:16px;overflow-x:auto;font:400 .9rem/1.5 "IBM Plex Mono",monospace;margin:0 0 22px;user-select:all}
+.note{color:var(--muted);font-size:.95rem}
+footer{border-top:1px solid var(--line);padding:28px 0 48px;color:var(--muted);font-size:.9rem}
+footer a{color:var(--muted)}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+<header class="hero">
+  <p class="he">שָׁלִיחַ &middot; shaliach &middot; n. one you send to act in your name</p>
+  <h1>Shaliach</h1>
+  <p class="tag">Send one. A whole team goes.</p>
+  <p class="sub">It's 11 at night and you are still the one chasing receipts, answering "where's my order?" and typing the same details into five portals. Shaliach gives you emissaries: Claude Code agents on your own Mac or server, run by a chief of staff called Atlas. You text Atlas. Atlas hires the team, hands out the work, and checks with you before anything goes out the door.</p>
+  <div class="cta">
+    <a class="btn" href="#install">Hire your first emissary</a>
+    <a class="link" href="videos.html">Watch the videos &rarr;</a>
+    <a class="link" href="https://github.com/yrks12/shaliach">GitHub</a>
+  </div>
+</header>
+
+<!-- The hero film. To swap it for a new render: scripts/site-hero.sh <16x9.mp4> <vertical.mp4>,
+     which rewrites the four files in docs/site/media/ that this block names. Nothing else changes. -->
+<div class="film">
+  <video id="film" autoplay muted loop playsinline preload="metadata" poster="media/hero-16x9.jpg"
+         data-wide="media/hero-16x9" data-tall="media/hero-9x16"
+         aria-label="A 31-second tour: you text Atlas, Atlas hires a team, each agent works on its own computer, and asks on your phone before anything goes live">
+    <source src="media/hero-16x9.mp4" type="video/mp4">
+  </video>
+  <button class="sound" id="sound" type="button">&#9654; Play with sound</button>
+</div>
+
+<section>
+  <h2>The job description is two thousand years old</h2>
+  <blockquote>"A person's emissary is as the person himself."<cite>Mishnah, Berakhot 5:5</cite></blockquote>
+  <p>That is a lot of trust to hand to software. So ours carry your name, do the legwork, and still come back to ask before they sign anything.</p>
+</section>
+
+<section>
+  <h2>What your emissaries actually do</h2>
+  <div class="grid">
+    <div class="card"><h3>You text one. It hires the rest.</h3><p>Atlas, your chief of staff, hires the agents the job needs, briefs each one and folds their back-and-forth into one thread you can actually read.</p></div>
+    <div class="card"><h3>Their own computers, not yours.</h3><p>Every agent gets its own browser and terminal. Watch any screen live, and take the wheel whenever you like.</p></div>
+    <div class="card"><h3>Nothing goes out without your nod.</h3><p>Publishing, paying, logging in: it stops and asks on your phone. Allow once, always, or not today.</p></div>
+    <div class="card"><h3>Tell them once.</h3><p>Correct one agent and the whole team writes it down. "Never post before 7am" stays never.</p></div>
+    <div class="card"><h3>They come back with the goods.</h3><p>Videos, PDFs and screenshots land in the chat, not in a folder you will never open again.</p></div>
+    <div class="card"><h3>On your turf.</h3><p>Your Mac or your own server, your Claude plan. Shaliach never stores your Claude token.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>What a shaliach is not</h2>
+  <ul class="nots">
+    <li><b>Not a chatbot with opinions.</b> It doesn't tell you what you could do. It opens a browser and does it.</li>
+    <li><b>Not someone else's cloud.</b> It runs on a machine you own, under your own Claude account.</li>
+    <li><b>Not unsupervised.</b> Anything risky waits for your tap, from the Mac app or the iPhone app.</li>
+    <li><b>Not a black box.</b> The source is on GitHub. Read every line before you hand it the keys.</li>
+  </ul>
+</section>
+
+<section id="install">
+  <h2>Send for one</h2>
+  <p class="step">1. Your server or your Mac</p>
+  <pre>curl -fsSL https://shaliach.me/install | sh</pre>
+  <p class="step">2. The Mac app (macOS 14+, Apple silicon)</p>
+  <pre>curl -fsSL https://raw.githubusercontent.com/yrks12/shaliach/main/scripts/install-mac.sh | bash</pre>
+  <p class="note">The installer says what it is about to do before it does it, and running it again upgrades: your token, sign-in and paired devices stay put. Prefer to read first? <a href="install">Here it is</a>. Every agent is a real Claude Code session on your own Claude account.</p>
+</section>
+
+<footer>
+  <p>Source-available under the PolyForm Noncommercial License 1.0.0. Free for noncommercial use; business licence available.</p>
+  <p>Independent project, not affiliated with or endorsed by Anthropic. &middot; <a href="videos.html">Videos</a> &middot; <a href="https://github.com/yrks12/shaliach">GitHub</a></p>
+</footer>
+</main>
+<script>
+(function () {
+  var v = document.getElementById('film'), b = document.getElementById('sound');
+  if (window.matchMedia('(max-aspect-ratio: 4/5)').matches) {
+    var t = v.getAttribute('data-tall');
+    v.poster = t + '.jpg';
+    v.querySelector('source').src = t + '.mp4';
+    v.load();
+  }
+  b.addEventListener('click', function () {
+    v.muted = false; v.currentTime = 0; v.loop = false; v.play(); b.hidden = true;
+  });
+  v.addEventListener('ended', function () { v.muted = true; v.loop = true; v.play(); b.hidden = false; });
+})();
+</script>
+</body>
+</html>

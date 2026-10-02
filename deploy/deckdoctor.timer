@@ -1,0 +1,14 @@
+# Fires deckdoctor.service every ten minutes, and once shortly after boot.
+# Install: deploy/install-deck.sh (enables it with `systemctl enable --now`).
+
+[Unit]
+Description=Run deckdoctor every 10 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+Unit=deckdoctor.service
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

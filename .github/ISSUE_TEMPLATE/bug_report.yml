@@ -1,0 +1,42 @@
+name: Bug report
+description: Report reproducible incorrect Shaliach behavior.
+title: "bug: "
+labels: [bug, triage]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: What happened?
+      description: Include the expected result and the actual result.
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - macOS app
+        - VPS/backend
+        - Agent runtime or hooks
+        - Browser/computer
+        - Deployment
+        - Cross-component
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Give minimal ordered steps with secrets removed.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Add logs, screenshots, commit, OS, and app/server versions.
+  - type: textarea
+    id: class
+    attributes:
+      label: Related failure class
+      description: Where else could the same behavior occur?

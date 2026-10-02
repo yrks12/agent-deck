@@ -1,0 +1,127 @@
+# Agent Deck on the always-on box.
+#
+# Install to /etc/systemd/system/agentdeck.service -- deploy/install-deck.sh
+# does it. Read it with `systemctl cat agentdeck`; everything here is
+# world-readable, which is why the token is NOT here (see EnvironmentFile).
+#
+# THE PORT. other_app's engine already runs on this box as deckop.service and
+# serves its own dashboard on port 7788. That port is taken and is not ours to
+# take: a listener scan taken during a `systemctl restart` of that unit would
+# show it free, and moving in would work exactly once before breaking other_app
+# permanently. So the deck binds the next port up and the two coexist. Anything
+# that needs to change the port changes it in ONE place -- the ExecStart line
+# below and the DECK_PORT default in install-deck.sh, which are cross-checked
+# by tests/test_deploy_artefacts.py.
+#
+# THE ADDRESS. The bind is the WireGuard address of this box, not 0.0.0.0. The
+# board exposes every session's transcript, the message surface and the spawn
+# controls; on 0.0.0.0 that is reachable by anything that can route to the box.
+# On the tunnel address it is reachable from Sam's Mac (10.99.0.4) and from
+# nowhere else, with the token as the second lock.
+
+[Unit]
+Description=Agent Deck - the board across Sam's Claude sessions
+Documentation=file:/opt/agent-deck/docs/the-box.md
+
+# The bind address only exists once WireGuard has brought the interface up.
+# Starting first fails with EADDRNOTAVAIL, so order after it and let Restart=
+# cover the case where the interface arrives late anyway.
+After=network-online.target wg-quick@wg0.service
+Wants=network-online.target wg-quick@wg0.service
+
+# No start-limit ban. If the tunnel is slow after a reboot the unit may retry
+# more than five times; being permanently marked failed for that is worse than
+# retrying, because a box nobody is watching never gets reset by hand.
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+User=deckop
+Group=deckop
+WorkingDirectory=/opt/agent-deck
+
+# AGENT_DECK_TOKEN lives HERE and only here: one line, AGENT_DECK_TOKEN=<value>,
+# in a file owned by the service user at mode 0600, outside the repo and outside
+# this unit. `systemctl cat` prints the unit to anyone; it must never print a
+# credential. install-deck.sh creates that file with a generated token on the
+# first run and leaves it untouched on every run after.
+# Unset it and the deck still starts, but answers 503 to every /v1 request --
+# see server/deploy_check.py, which refuses to call that box deployed.
+# The leading '-' is deliberate: without it systemd refuses to start at all if
+# the file is missing, which reads in the journal as a mysterious failure
+# rather than as the deck's own honest 503 "auth_not_configured".
+EnvironmentFile=-/etc/agent-deck/agentdeck.env
+# The CLI login every hired desk inherits. Optional on purpose: a box with
+# no token still boots, and install-deck.sh reports the login separately.
+EnvironmentFile=-/home/deckop/.claude/oauth.env
+
+# Non-secret configuration is fine in the clear.
+Environment=PYTHONUNBUFFERED=1
+
+# WHERE A HIRED DESK REPORTS BACK TO. server/approval.py writes this into the
+# `--settings` file it generates for every desk the deck hires, and the four
+# session hooks read it from there. It derives the same answer from the
+# ExecStart argv below, so this line is the belt to that brace -- it also fixes
+# anyone who starts uvicorn on this box by hand, which is what an operator
+# debugging at 2am actually does.
+#
+# It must be the address in ExecStart, not loopback. MEASURED on 2026-09-02:
+# the deck binds 10.99.0.1 ONLY, so `curl http://127.0.0.1:7789/api/state` on
+# the box is `Failed to connect`, and cc-approve.js pointed there answers
+# "deck unreachable" -- a desk stalled on a modal, with the board still green.
+# 10.99.0.1 is an address on this box; the hooks never leave it.
+Environment=DECK_URL=http://10.99.0.1:7789
+# systemd's default PATH has neither ~/.local/bin (where `claude` lives on this
+# box) nor the node the session hooks and the WhatsApp bridge run under.
+Environment=PATH=/home/deckop/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+ExecStart=/opt/agent-deck/.venv/bin/python -m uvicorn server.app:app --host 10.99.0.1 --port 7789
+
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+
+# `process`, and this is the difference between a box that keeps working and
+# one that only looks like it does. The agents this daemon hires are its own
+# children, so they live in its cgroup -- and both `mixed` (what this was) and
+# systemd's default `control-group` send SIGKILL to everything in that cgroup
+# when the unit stops. MEASURED here on 2026-09-02, with a control:
+#
+#   hired new-hire-d222b0; `pgrep -u deckop -c -f claude` -> 5
+#   systemctl restart agentdeck
+#   `pgrep -u deckop -c -f claude` -> 0
+#
+# Five working agents, gone, on the machine whose entire purpose is to keep
+# going when the owner shuts his laptop. Every deploy, every edit to this file
+# and every `Restart=always` recovery did that, and the board afterwards read
+# OFFLINE with no reason -- which looks exactly like a desk nobody started.
+#
+# Under `process` systemd signals the main process only; the agents are
+# reparented to init and carry on. The cost is honest and small: an agent
+# orphaned by a crash is not reaped here, so `claude agents` is the place that
+# knows what is running. Pinned by tests/test_the_team_survives_a_restart.py.
+KillMode=process
+OOMScoreAdjust=-500
+
+# Logs go to the journal: `journalctl -u agentdeck -f`. No log file to rotate,
+# and nothing for a full disk to half-write.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=agentdeck
+
+# Deliberately light sandboxing, and the reason matters. This service's whole
+# job is to start real `claude` agents that edit real repositories. ProtectHome,
+# ProtectSystem=strict or a ReadWritePaths whitelist would be inherited by every
+# agent it spawns and would break the product, while a determined agent inside
+# the sandbox can still do anything the service user can. The real boundary is
+# the network bind above plus the token -- not a namespace.
+#
+# PrivateTmp is off on purpose: Claude Code binds its control sockets under
+# /tmp, and a private /tmp would hide every spawned session from the deck that
+# spawned it.
+PrivateTmp=false
+NoNewPrivileges=false
+LimitNOFILE=8192
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,19 @@
+# Rotates the deck's own log. Installed as /etc/logrotate.d/agent-deck by the
+# installer, RENDERED from deploy/templates/agent-deck-log.logrotate.in.
+# MEASURED 2026-09-30 on the first box: 111 MB, never rotated.
+#
+# copytruncate, because a uvicorn started by hand holds the file open and
+# cannot be asked to reopen it. A few lines can be lost at the instant of the
+# copy; that is cheaper than a rotation that leaves the process writing to a
+# deleted inode.
+@APP_DIR@/.agent-deck.log {
+    daily
+    maxsize 50M
+    rotate 4
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su @DECK_USER@ @DECK_USER@
+}

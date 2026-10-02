@@ -1,0 +1,4 @@
+*.xcodeproj/
+AgentDeckPhone/Info.plist
+# Live Simulator screenshots show real desk traffic: kept local, never committed.
+Artifacts/simulator/

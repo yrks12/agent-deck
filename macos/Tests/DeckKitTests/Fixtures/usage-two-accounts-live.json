@@ -1,0 +1,177 @@
+{
+ "unofficial": true,
+ "accounts": [
+  {
+   "id": "main",
+   "label": "Main",
+   "kind": "subscription",
+   "plan": {
+    "name": "Max 20×",
+    "subscription": "max",
+    "tier": "default_claude_max_20x"
+   },
+   "available": true,
+   "stale": false,
+   "reason": null,
+   "windows": [
+    {
+     "key": "session",
+     "label": "5-hour session",
+     "percent": 48.0,
+     "severity": "normal",
+     "resets_at": "2026-10-01T21:00:00.849902+00:00",
+     "scope": null
+    },
+    {
+     "key": "weekly_all",
+     "label": "Weekly",
+     "percent": 83.0,
+     "severity": "warning",
+     "resets_at": "2026-10-06T22:00:00.849927+00:00",
+     "scope": null
+    },
+    {
+     "key": "weekly_scoped:Fable",
+     "label": "Weekly · Fable",
+     "percent": 0.0,
+     "severity": "normal",
+     "resets_at": "2026-10-06T22:00:00+00:00",
+     "scope": "Fable"
+    }
+   ],
+   "extra_usage": {
+    "enabled": false,
+    "spend_limit_reached": false
+   },
+   "fetched_at": 1790883465.945984,
+   "refresh_expires_at": 1793041905.423,
+   "desks": [
+    "desk-a",
+    "desk-b"
+   ]
+  },
+  {
+   "id": "work",
+   "label": "Work",
+   "kind": "subscription",
+   "plan": {
+    "name": "Max 20×",
+    "subscription": "max",
+    "tier": "default_claude_max_20x"
+   },
+   "available": true,
+   "stale": false,
+   "reason": null,
+   "windows": [
+    {
+     "key": "session",
+     "label": "5-hour session",
+     "percent": 0.0,
+     "severity": "normal",
+     "resets_at": null,
+     "scope": null
+    },
+    {
+     "key": "weekly_all",
+     "label": "Weekly",
+     "percent": 0.0,
+     "severity": "normal",
+     "resets_at": "2026-10-08T10:00:00+00:00",
+     "scope": null
+    },
+    {
+     "key": "weekly_scoped:Fable",
+     "label": "Weekly · Fable",
+     "percent": 0.0,
+     "severity": "normal",
+     "resets_at": "2026-10-08T10:00:00+00:00",
+     "scope": "Fable"
+    }
+   ],
+   "extra_usage": {
+    "enabled": false,
+    "spend_limit_reached": false
+   },
+   "fetched_at": 1790883709.5463946,
+   "refresh_expires_at": 1793458801.825,
+   "desks": []
+  }
+ ],
+ "policy": {
+  "mode": "failover",
+  "threshold_pct": 90,
+  "failover_allowed": true,
+  "default": "main",
+  "failover_order": [
+   "main",
+   "work"
+  ],
+  "api_account": ""
+ },
+ "available": true,
+ "stale": false,
+ "reason": null,
+ "plan": {
+  "name": "Max 20×",
+  "subscription": "max",
+  "tier": "default_claude_max_20x"
+ },
+ "windows": [
+  {
+   "key": "session",
+   "label": "5-hour session",
+   "percent": 48.0,
+   "severity": "normal",
+   "resets_at": "2026-10-01T21:00:00.849902+00:00",
+   "scope": null
+  },
+  {
+   "key": "weekly_all",
+   "label": "Weekly",
+   "percent": 83.0,
+   "severity": "warning",
+   "resets_at": "2026-10-06T22:00:00.849927+00:00",
+   "scope": null
+  },
+  {
+   "key": "weekly_scoped:Fable",
+   "label": "Weekly · Fable",
+   "percent": 0.0,
+   "severity": "normal",
+   "resets_at": "2026-10-06T22:00:00+00:00",
+   "scope": "Fable"
+  }
+ ],
+ "breakdown": {
+  "as_of": "2026-10-01T19:37:45.897190+00:00",
+  "rows": [
+   {
+    "key": "claude_code",
+    "label": "Claude Code",
+    "percent": 100
+   },
+   {
+    "key": "chat",
+    "label": "Chats",
+    "percent": 0
+   },
+   {
+    "key": "cowork",
+    "label": "Cowork",
+    "percent": 0
+   },
+   {
+    "key": "other",
+    "label": "Other",
+    "percent": 0
+   }
+  ]
+ },
+ "extra_usage": {
+  "enabled": false,
+  "spend_limit_reached": false
+ },
+ "other": [],
+ "fetched_at": 1790883465.945984,
+ "next_refresh_at": 1790883765.945984
+}

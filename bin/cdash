@@ -1,0 +1,172 @@
+#!/usr/bin/env bash
+# Agent Deck launcher.
+#
+#   cdash              start if down, then open the workspace
+#   cdash install      install the LaunchAgent (starts at login, restarts on crash)
+#   cdash uninstall    remove the LaunchAgent
+#   cdash status       is it running, and is it launchd-managed?
+#   cdash restart | stop | log
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PORT="${AGENT_DECK_PORT:-7788}"
+URL="http://127.0.0.1:${PORT}/"
+LOG="${ROOT}/.agent-deck.log"
+PY="${ROOT}/.venv/bin/python"
+
+# The LaunchAgent's label. An install made under an older label (any
+# `*.agentdeck.plist` already in LaunchAgents) keeps its own, so upgrading
+# never orphans a running daemon; a fresh install uses the neutral default.
+LABEL="${AGENT_DECK_LAUNCHD_LABEL:-}"
+if [ -z "$LABEL" ]; then
+  LABEL="dev.agentdeck.daemon"
+  for existing in "${HOME}"/Library/LaunchAgents/*.agentdeck.plist; do
+    [ -f "$existing" ] && { LABEL="$(basename "$existing" .plist)"; break; }
+  done
+fi
+PLIST="${HOME}/Library/LaunchAgents/${LABEL}.plist"
+DOMAIN="gui/$(id -u)"
+
+# /api requires the deck's token now. The daemon writes it here at 0600 on
+# startup, whatever its source, so this is the one place a local caller looks.
+# Read at call time rather than once at the top: `cdash install` starts the
+# daemon, and on a first ever run the file does not exist until it has.
+BUS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/agent-bus"
+TOKEN_FILE="${DECK_TOKEN_FILE:-${BUS}/deck-token.txt}"
+deck_token() { cat "$TOKEN_FILE" 2>/dev/null || true; }
+
+up() {
+  curl -fsS --max-time 2 -H "Authorization: Bearer $(deck_token)" \
+    "${URL}api/state" >/dev/null 2>&1
+}
+managed() { [ -f "$PLIST" ] && launchctl print "${DOMAIN}/${LABEL}" >/dev/null 2>&1; }
+
+need_venv() {
+  if [ ! -x "$PY" ]; then
+    echo "agent-deck: no venv at $PY" >&2
+    echo "  create it with:  uv venv --python 3.13 '${ROOT}/.venv' && uv pip install --python '$PY' fastapi uvicorn" >&2
+    exit 1
+  fi
+}
+
+wait_up() {
+  for _ in $(seq 1 60); do
+    up && return 0
+    sleep 0.25
+  done
+  return 1
+}
+
+write_plist() {
+  mkdir -p "$(dirname "$PLIST")"
+  cat > "$PLIST" <<PLIST_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>${LABEL}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${PY}</string>
+    <string>-m</string>
+    <string>uvicorn</string>
+    <string>server.app:app</string>
+    <string>--host</string><string>127.0.0.1</string>
+    <string>--port</string><string>${PORT}</string>
+  </array>
+  <key>WorkingDirectory</key><string>${ROOT}</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key>
+  <dict><key>SuccessfulExit</key><false/></dict>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>${LOG}</string>
+  <key>StandardErrorPath</key><string>${LOG}</string>
+  <key>ProcessType</key><string>Background</string>
+</dict>
+</plist>
+PLIST_EOF
+}
+
+case "${1:-}" in
+  install)
+    need_venv
+    # A hand-started daemon would hold the port and make launchd flap.
+    pkill -f "uvicorn server.app:app.*--port ${PORT}" >/dev/null 2>&1 || true
+    launchctl bootout "${DOMAIN}/${LABEL}" >/dev/null 2>&1 || true
+    write_plist
+    launchctl bootstrap "$DOMAIN" "$PLIST"
+    launchctl enable "${DOMAIN}/${LABEL}"
+    if wait_up; then
+      echo "agent-deck: installed and running on ${URL}"
+      echo "  starts at login and restarts on crash. remove with: cdash uninstall"
+    else
+      echo "agent-deck: LaunchAgent installed but not answering — see $LOG" >&2
+      tail -20 "$LOG" >&2 || true
+      exit 1
+    fi
+    exit 0
+    ;;
+  uninstall)
+    launchctl bootout "${DOMAIN}/${LABEL}" >/dev/null 2>&1 || true
+    rm -f "$PLIST"
+    echo "agent-deck: LaunchAgent removed"
+    exit 0
+    ;;
+  status)
+    up && echo "agent-deck: running on ${URL}" || echo "agent-deck: not running"
+    managed && echo "  launchd-managed (starts at login)" || echo "  not launchd-managed — run: cdash install"
+    exit 0
+    ;;
+  stop)
+    if managed; then
+      # KeepAlive would immediately restart a plain kill.
+      launchctl bootout "${DOMAIN}/${LABEL}" >/dev/null 2>&1 || true
+      echo "agent-deck: stopped (LaunchAgent still installed; 'cdash' or login restarts it)"
+    else
+      pkill -f "uvicorn server.app:app.*--port ${PORT}" >/dev/null 2>&1 \
+        && echo "agent-deck: stopped" || echo "agent-deck: not running"
+    fi
+    exit 0
+    ;;
+  log)
+    exec tail -f "$LOG"
+    ;;
+  restart)
+    if managed; then
+      launchctl kickstart -k "${DOMAIN}/${LABEL}"
+      wait_up && echo "agent-deck: restarted" || { echo "agent-deck: restart failed — see $LOG" >&2; exit 1; }
+      exit 0
+    fi
+    pkill -f "uvicorn server.app:app.*--port ${PORT}" >/dev/null 2>&1 || true
+    sleep 0.5
+    ;;
+esac
+
+need_venv
+
+if up; then
+  :
+elif managed; then
+  launchctl kickstart "${DOMAIN}/${LABEL}" >/dev/null 2>&1 || true
+  wait_up || { echo "agent-deck: LaunchAgent did not come up — see $LOG" >&2; exit 1; }
+else
+  echo "agent-deck: starting on ${URL}  (run 'cdash install' to start it at login)"
+  ( cd "$ROOT" && nohup "$PY" -m uvicorn server.app:app \
+      --host 127.0.0.1 --port "$PORT" >"$LOG" 2>&1 & )
+  wait_up || { echo "agent-deck: failed to start — see $LOG" >&2; tail -20 "$LOG" >&2; exit 1; }
+fi
+
+# The board's credential, handed over once in the URL.
+#
+# 127.0.0.1 is where this binds, and that has stopped being a boundary: a
+# Docker Desktop container reached the unauthenticated /api through the VM
+# gateway with both hostname aliases blackholed. So /api wants a token now, and
+# the browser cannot send one -- EventSource takes no headers at all. The page
+# route swaps `?t=` for an HttpOnly SameSite=strict cookie and redirects to the
+# clean path, so the secret is not left in the URL bar or in history, and every
+# fetch and the SSE stream carry it afterwards with web/app.js unchanged.
+#
+# The cookie lasts a year, so a bookmark he opens next month still shows a
+# board. This is the door that mints it; opening the bare URL in a browser that
+# has never had one shows the page with an empty deck.
+open "${URL}?t=$(deck_token)"

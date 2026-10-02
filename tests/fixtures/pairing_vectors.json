@@ -1,0 +1,56 @@
+{
+  "vectors": [
+    {
+      "code": "ADK1.eyJjb2RlIjoicTdaYjBjVjJsOFJrVDF4WXczSG5BZyIsImV4cCI6MTc5MDgxMjgwMCwibmFtZSI6IkRhbidzIGRlY2siLCJ0bHMiOiJjYSIsInVybCI6Imh0dHBzOi8vMjAzLTAtMTEzLTcuc3NsaXAuaW8iLCJ2IjoxfQ",
+      "id": "V1",
+      "note": "ca",
+      "parsed": {
+        "code": "q7Zb0cV2l8RkT1xYw3HnAg",
+        "exp": 1790812800,
+        "name": "Dan's deck",
+        "tls": "ca",
+        "url": "https://203-0-113-7.sslip.io",
+        "v": 1
+      }
+    },
+    {
+      "code": "ADK1.eyJjb2RlIjoiWGsybVA5c0xxMFdiUjR0WXo4SGNWZyIsImV4cCI6MTc5MDgxMjgwMCwibmFtZSI6InRlc3Qgdm0iLCJwaW4iOiJzaGEyNTYvNDdERVFwajhIQlNhKy9USW1XKzVKQ2V1UWVSa201Tk1wSldaRzNoU3VGVT0iLCJ0bHMiOiJwaW4iLCJ1cmwiOiJodHRwczovLzE5Mi4xNjguNjQuNSIsInYiOjF9",
+      "id": "V2",
+      "note": "pin",
+      "parsed": {
+        "code": "Xk2mP9sLq0WbR4tYz8HcVg",
+        "exp": 1790812800,
+        "name": "test vm",
+        "pin": "sha256/47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+        "tls": "pin",
+        "url": "https://192.168.64.5",
+        "v": 1
+      }
+    },
+    {
+      "code": "ADK1.eyJjb2RlIjoicTdaYjBjVjJsOFJrVDF4WXc\nzSG5BZyIsImV4cCI6MTc5MDgxMjgwMCwibmFtZSI\n6IkRhbidzIGRlY2siLCJ0bHMiOiJjYSIsInVybCI\n6Imh0dHBzOi8vMjAzLTAtMTEzLTcuc3NsaXAuaW8\niLCJ2IjoxfQ",
+      "id": "V3",
+      "note": "V1 with a line break inserted every 40 chars; parses equal to V1",
+      "parsed": {
+        "code": "q7Zb0cV2l8RkT1xYw3HnAg",
+        "exp": 1790812800,
+        "name": "Dan's deck",
+        "tls": "ca",
+        "url": "https://203-0-113-7.sslip.io",
+        "v": 1
+      }
+    },
+    {
+      "code": "ADK1.eyJjb2RlIjoiWGsybVA5c0xxMFdiUjR0WXo4SGNWZyIsImV4cCI6MTc5MDgxMjgwMCwibmFtZSI6InRlc3Qgdm0iLCJ0bHMiOiJwaW4iLCJ1cmwiOiJodHRwczovLzE5Mi4xNjguNjQuNSIsInYiOjF9",
+      "id": "V4",
+      "note": "V2 with the pin key removed",
+      "rejected": "code_incomplete"
+    },
+    {
+      "code": "ADK2.…",
+      "id": "V5",
+      "note": "unknown version",
+      "rejected": "code_version"
+    }
+  ]
+}

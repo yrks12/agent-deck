@@ -1,0 +1,44 @@
+# The owner's always-on box, described as deck.toml (easy-setup plan K1/K6).
+#
+# The three files beside this one were copied off the live box on 2026-09-30
+# (`/etc/systemd/system/agentdeck.service`, `.../deckdoctor.service`,
+# `/etc/logrotate.d/agent-deck`) and were byte-identical to deploy/ at main
+# 9c2e0f2. tests/test_render_owner_profile.py renders THIS file through
+# deploy/render.py and asserts every non-comment line matches them. That test
+# is the promise that the owner's box keeps running exactly what it runs today.
+
+[deck]
+name = "Agent Deck"
+description = "Agent Deck - the board across Sam's Claude sessions"
+user = "deckop"
+home = "/home/deckop"
+app_dir = "/opt/agent-deck"
+state_dir = "/var/lib/agent-deck"
+bind = "10.99.0.1"
+port = 7789
+reserved_ports = [7788]
+install_source = "rsync"
+
+[network]
+mode = "wireguard"
+tls = "none"
+hostname = ""
+acme_email = ""
+wireguard_iface = "wg0"
+
+[desks]
+docker = true
+image = "agent-deck/desk-computer"
+
+[claude]
+channel = "stable"
+oauth_env = "/home/deckop/.claude/oauth.env"
+token_issued = ""
+
+[doctor]
+public_probe_urls = ["https://v.initech.example/", "http://v.initech.example/"]
+whatsapp = true
+
+[update]
+base_url = ""
+channel = "stable"

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shaliach — Manager</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="rail">
+      <div class="brand">
+        <h1>Shaliach</h1>
+        <nav class="tabs">
+          <a class="tab" href="/">Deck</a>
+          <a class="tab" href="/feed">Feed</a>
+          <a class="tab tab--on" href="/manager">Manager</a>
+        </nav>
+      </div>
+
+      <div class="counts">
+        <div class="count" id="count-reports"><b>0</b><span>reports</span></div>
+        <div class="count count--alert" id="count-waiting" data-hot="0"><b>0</b><span>waiting</span></div>
+        <div class="count" id="count-msgs"><b>0</b><span>messages</span></div>
+      </div>
+
+      <div class="nav">
+        <div class="crown" id="crown" data-on="0">no manager</div>
+      </div>
+    </div>
+
+    <section class="office" id="office">
+      <div class="section__head"><h2>The Office</h2><span class="office__hint" id="hint"></span></div>
+      <div class="office__room"><canvas id="office-canvas"></canvas></div>
+    </section>
+
+    <form class="say" id="composer">
+      <input id="say" autocomplete="off" maxlength="2000" disabled
+             placeholder="crown a session on the deck to talk to it">
+      <label class="say__mute" title="do not speak the reply">
+        <input type="checkbox" id="mute"> mute
+      </label>
+      <button type="submit" id="send" disabled>send</button>
+      <span class="say__status" id="say-status"></span>
+    </form>
+
+    <section class="section">
+      <div class="section__head"><h2 id="thread-head">Traffic</h2></div>
+      <div class="mgr__msgs" id="messages"></div>
+    </section>
+  </div>
+
+  <script src="/static/mates.js"></script>
+  <script src="/static/manager.js"></script>
+</body>
+</html>

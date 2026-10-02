@@ -1,0 +1,16 @@
+{
+ "id": 998658053,
+ "name": "mcp",
+ "full_name": "MicrosoftDocs/mcp",
+ "owner": {
+  "login": "MicrosoftDocs",
+  "type": "Organization"
+ },
+ "html_url": "https://github.com/MicrosoftDocs/mcp",
+ "description": "Official Microsoft Learn MCP Server and CLI tool \u2013 powering LLMs and AI agents with real-time, trusted Microsoft docs & code samples.",
+ "stargazers_count": 1922,
+ "pushed_at": "2026-09-29T06:34:34Z",
+ "updated_at": "2026-09-30T17:17:32Z",
+ "default_branch": "main",
+ "archived": false
+}

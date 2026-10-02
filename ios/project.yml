@@ -1,0 +1,160 @@
+# Shaliach (formerly Agent Deck) for iPhone. Generate the project with:
+#
+#     xcodegen generate --spec ios/project.yml
+#
+# and it lands at ios/AgentDeckPhone.xcodeproj (gitignored: a build artefact of
+# this file, never edited by hand).
+#
+# What is shared with the Mac app, and how:
+#
+#   DeckKit     The whole domain + transport layer (models, HTTPDeckClient + SSE,
+#               pairing, roster/timeline logic), linked as the SAME package
+#               product the Mac app links. Mac-only code inside it (the bridge
+#               executor's posix_spawn, Seatbelt's Process) is fenced with
+#               `#if os(macOS)`, so it builds for iOS with no behaviour change
+#               on the Mac.
+#   Characters  AvatarView.swift + Theme.swift are compiled straight from
+#               macos/Sources/DeckUI into this target. DeckUI as a whole stays
+#               Mac-only (AppKit throughout); those two files are fenced so the
+#               same drawing code renders the same faces on both.
+#   Calls       CallStageView.swift (the character on a call, moving with both
+#               voices) is compiled in the same way; it is pure SwiftUI.
+#   Look        DeckPalette.swift (the palette from DeckKit's DeckTokens, the
+#               haptics, the card) and RosterViews.swift (the chief's card, a
+#               desk's row, the unread badge, the attention banner, the pulse
+#               line) are compiled the same way, so the Mac and the phone draw
+#               them from one file.
+#
+# One third-party dependency, as on the Mac: SwiftTerm (the terminal emulator),
+# by owner ask, pinned to the same exact version macos/Package.swift pins.
+name: AgentDeckPhone
+options:
+  bundleIdPrefix: dev.agentdeck
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+packages:
+  DeckPackage:
+    path: ../macos
+  SwiftTerm:
+    url: https://github.com/migueldeicaza/SwiftTerm
+    exactVersion: 1.20.0
+
+settings:
+  base:
+    # The app's id, per build machine: export DECK_BUNDLE_ID before `xcodegen`
+    # (macos/Scripts/bundle-id.sh explains) or it is this neutral default. The
+    # Keychain item and settings are scoped to it, so keep the id installs have.
+    DECK_BUNDLE_ID: dev.agentdeck.app
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+    TARGETED_DEVICE_FAMILY: "1"
+
+targets:
+  AgentDeckPhone:
+    type: application
+    platform: iOS
+    sources:
+      - path: AgentDeckPhone
+      - path: ../macos/Sources/DeckUI/AvatarView.swift
+        group: Shared
+      - path: ../macos/Sources/DeckUI/Theme.swift
+        group: Shared
+      - path: ../macos/Sources/DeckUI/CallStageView.swift
+        group: Shared
+      - path: ../macos/Sources/DeckUI/DeckPalette.swift
+        group: Shared
+      - path: ../macos/Sources/DeckUI/RosterViews.swift
+        group: Shared
+      - path: ../macos/Sources/DeckUI/UsageMeterView.swift
+        group: Shared
+      - path: ../macos/Sources/DeckUI/AccountViews.swift
+        group: Shared
+      - path: ../macos/Sources/DeckUI/AccountSignInViews.swift
+        group: Shared
+      - path: ../macos/Sources/DeckUI/ListenViews.swift
+        group: Shared
+      - path: ../macos/Sources/DeckUI/HeldAttachmentViews.swift
+        group: Shared
+      - path: ../macos/Sources/DeckUI/MacDisplayMenu.swift
+        group: Shared
+    dependencies:
+      - package: DeckPackage
+        product: DeckKit
+      - package: SwiftTerm
+        product: SwiftTerm
+      # The held-video player is AVKit's own view controller: link it explicitly.
+      - sdk: AVKit.framework
+    info:
+      path: AgentDeckPhone/Info.plist
+      properties:
+        CFBundleDisplayName: Shaliach
+        UILaunchScreen:
+          UIColorName: ""
+        # Portrait everywhere except the agent's screen, which may turn: the
+        # app delegate's mask (OrientationLock) narrows this at runtime.
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UIApplicationSupportsIndirectInputEvents: true
+        # The deck is reached over his WireGuard VPN by plain http to a private
+        # address (the same way the Mac app reaches it). Pairing codes carry
+        # https + a pinned key; a hand-typed address may be http.
+        # Calls: the live voice needs the mic; the fallback (a deck with no
+        # live voice) listens with Apple's speech recogniser.
+        NSMicrophoneUsageDescription: Shaliach uses the microphone when you call an agent or record a voice message to it.
+        NSCameraUsageDescription: Shaliach uses the camera when you take a photo to send to an agent.
+        NSSpeechRecognitionUsageDescription: When live voice isn't available, Shaliach turns what you say on a call into text for the agent.
+        # A call keeps going with the screen locked, for as long as it is up.
+        # Audio is only active during a call; hanging up releases it.
+        UIBackgroundModes: [audio, fetch]
+        # Notifications (no APNs on a free team): the background refresh that
+        # asks the deck what is new for him, and the link an ntfy
+        # notification opens (agentdeck://open?thread=...).
+        BGTaskSchedulerPermittedIdentifiers: ["${DECK_BUNDLE_ID}.owner-alerts"]
+        DeckBundleID: ${DECK_BUNDLE_ID}
+        CFBundleURLTypes:
+          - CFBundleURLName: ${DECK_BUNDLE_ID}.open
+            CFBundleURLSchemes: [agentdeck]
+        # The APNs path, prepared and OFF: needs the paid Apple team, the
+        # entitlement in AgentDeckPhone/APNs.entitlements, and this set true.
+        DeckAPNsEnabled: false
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        # The build product keeps its pre-rename file name; the phone shows
+        # CFBundleDisplayName (Shaliach). Renaming it moves TEST_HOST and install-iphone.sh.
+        PRODUCT_NAME: Agent Deck
+        PRODUCT_MODULE_NAME: AgentDeckPhone
+        PRODUCT_BUNDLE_IDENTIFIER: ${DECK_BUNDLE_ID}.ios
+        GENERATE_INFOPLIST_FILE: "NO"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+  AgentDeckPhoneRenders:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: RenderTests
+    dependencies:
+      - target: AgentDeckPhone
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ${DECK_BUNDLE_ID}.ios.renders
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Agent Deck.app/Agent Deck"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  AgentDeckPhone:
+    build:
+      targets:
+        AgentDeckPhone: all
+        AgentDeckPhoneRenders: [test]
+    test:
+      targets:
+        - AgentDeckPhoneRenders

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shaliach — Feed</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="rail">
+      <div class="brand">
+        <h1>Shaliach</h1>
+        <nav class="tabs">
+          <a class="tab" href="/">Deck</a>
+          <a class="tab tab--on" href="/feed">Feed</a>
+          <a class="tab" href="/manager">Manager</a>
+        </nav>
+      </div>
+
+      <div class="counts">
+        <div class="count" id="count-runs"><b>0</b><span>explainers</span></div>
+        <div class="count" id="count-size"><b>0</b><span>on disk</span></div>
+        <div class="count" id="count-mins"><b>0</b><span>minutes</span></div>
+      </div>
+
+      <div class="nav">
+        <span id="sub" class="clock"></span>
+        <input id="search" class="search" type="search" placeholder="filter…" autocomplete="off">
+      </div>
+    </div>
+
+    <div id="list"></div>
+  </div>
+
+  <script src="/static/feed.js"></script>
+</body>
+</html>

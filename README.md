@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/yrks12/shaliach/blob/main/docs/media/shaliach.mp4" title="Watch the 35-second tour">
-    <img src="docs/media/shaliach-poster.jpg" width="100%" alt="Shaliach. Your AI emissaries. A whole team that works for you. Click to watch the 35-second tour.">
+    <img src="docs/media/hero.gif" width="100%" alt="Shaliach in 20 seconds: you text one agent, it hires a team, they brief each other and hand off work, and anything risky waits for your OK. Click to watch the full 35-second tour.">
   </a>
 </p>
 
@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <b>Source-available</b> · Free for personal use · Business licence available
+  <b>Source-available</b> · Free for non-commercial use · Business licence available
 </p>
 
 <table>

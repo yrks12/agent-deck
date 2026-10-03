@@ -35,7 +35,7 @@ Every agent is the unmodified claude CLI. You sign in with Claude's own claude a
 
 ### What will it cost me in tokens?
 
-Shaliach is free for personal use. The agents use your Claude plan, exactly like Claude Code sessions you start yourself. Five agents working at once use it about five times as fast as one. Start with one or two agents and watch your usage on the first day. We have not published a "typical cost" because we have not measured one we trust.
+Shaliach is free for non-commercial use. The agents use your Claude plan, exactly like Claude Code sessions you start yourself. Five agents working at once use it about five times as fast as one. Start with one or two agents and watch your usage on the first day. We have not published a "typical cost" because we have not measured one we trust.
 
 ### Which platforms work?
 

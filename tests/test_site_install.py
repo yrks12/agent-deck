@@ -23,6 +23,7 @@ from test_install_oneliner import SCRIPT, Box, _exe
 ROOT = Path(__file__).resolve().parents[1]
 SITE_COPY = ROOT / "docs" / "site" / "install"
 SITE_URL = "https://shaliach.me/install"
+MANIFEST = ROOT / "oss" / "manifest.toml"
 
 
 def test_the_site_serves_the_real_installer_byte_for_byte():
@@ -31,10 +32,12 @@ def test_the_site_serves_the_real_installer_byte_for_byte():
         "docs/site/install differs from install.sh: cp install.sh docs/site/install")
 
 
+@pytest.mark.skipif(not MANIFEST.exists(),
+                    reason="oss/manifest.toml lives only in the private repo; the public export has no manifest")
 def test_the_export_rewrites_the_site_copy_like_the_installer():
     # The export rewrites the repo slug in install.sh; the site copy must get the
     # same rewrite or the public copies would differ.
-    manifest = (ROOT / "oss" / "manifest.toml").read_text()
+    manifest = MANIFEST.read_text()
     assert '"docs/site/install",' in manifest
 
 
